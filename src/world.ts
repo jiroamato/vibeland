@@ -83,7 +83,7 @@ export class World {
     const lx = mod(wx, CHUNK_SX);
     const lz = mod(wz, CHUNK_SZ);
     c.blocks[blockIndex(lx, wy, lz)] = id;
-    c.recomputeHeightMap();
+    c.updateColumnHeight(lx, lz);
 
     // Relight this chunk + horizontal neighbours. Each computeSkylight pass is a
     // single inward flood, so we iterate twice to let light converge across the

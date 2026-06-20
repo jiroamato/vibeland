@@ -16,6 +16,7 @@ export class HeldItem {
   camera: THREE.PerspectiveCamera;
   private mesh: THREE.Mesh;
   private geom: THREE.BoxGeometry;
+  private baseUV!: Float32Array; // pristine 0/1 box UVs to remap from
   private currentBlock = -1;
   private phase = 0; // 0 == idle, (0,1] == mid-swing
 
@@ -25,6 +26,8 @@ export class HeldItem {
 
     const mat = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true });
     this.geom = new THREE.BoxGeometry(1, 1, 1);
+    // snapshot the original 0/1 UVs so re-skinning always maps from a clean base
+    this.baseUV = (this.geom.getAttribute('uv').array as Float32Array).slice();
     this.mesh = new THREE.Mesh(this.geom, mat);
     this.mesh.scale.setScalar(0.42);
     this.scene.add(this.mesh);
@@ -42,8 +45,10 @@ export class HeldItem {
       const [u0, v0, u1, v1] = tileUV(def.faces[face]);
       for (let v = 0; v < 4; v++) {
         const i = face * 4 + v;
-        const ou = uv.getX(i);
-        const ov = uv.getY(i);
+        // remap from the pristine base UVs (0/1), never the current (already
+        // atlas-mapped) values — otherwise each switch shrinks the tile region.
+        const ou = this.baseUV[i * 2];
+        const ov = this.baseUV[i * 2 + 1];
         uv.setXY(i, u0 + ou * (u1 - u0), v0 + ov * (v1 - v0));
         const s = FACE_SHADE[face];
         colors[i * 3] = s;

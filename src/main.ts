@@ -171,4 +171,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle (handy in the console: e.g. __game.player.pos, __game.sky.time).
-(window as any).__game = { player, world, input, interaction, ui, chunks, sky, renderer };
+(window as any).__game = { player, world, input, interaction, ui, chunks, sky, renderer, held };

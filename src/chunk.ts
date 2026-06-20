@@ -52,6 +52,18 @@ export class Chunk {
     return this.skylight[blockIndex(x, y, z)];
   }
 
+  /** Recompute the height map for a single column (after one block edit). */
+  updateColumnHeight(x: number, z: number): void {
+    let h = 0;
+    for (let y = CHUNK_SY - 1; y >= 0; y--) {
+      if (this.blocks[blockIndex(x, y, z)] !== 0) {
+        h = y + 1;
+        break;
+      }
+    }
+    this.heightMap[z * CHUNK_SX + x] = h;
+  }
+
   /** Recompute the per-column height map (index of highest non-air block + 1). */
   recomputeHeightMap(): void {
     for (let z = 0; z < CHUNK_SZ; z++) {

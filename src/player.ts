@@ -87,12 +87,20 @@ export class Player {
     return false;
   }
 
-  // Move one axis then resolve against ALL overlapping solids, snapping to the
-  // nearest blocking face in the direction of travel (smallest coord for +,
-  // largest for -). Other axes are assumed already resolved (clear).
+  // Move one axis then resolve against the overlapping solids, snapping to the
+  // nearest blocking face IN THE DIRECTION OF TRAVEL. Blocks behind the
+  // pre-move leading edge are ignored, so a graze/penetration on the far side
+  // can never snap the player backwards (axis-separated corner-catch). Other
+  // axes are assumed already resolved (clear).
   private collideAxis(axis: 'x' | 'y' | 'z', amount: number): void {
-    this.pos[axis] += amount;
     if (amount === 0) return;
+    const before = this.pos[axis];
+    this.pos[axis] += amount;
+
+    // AABB extents on this axis: feet..head for y, +/-HALF for x/z.
+    const lowExt = axis === 'y' ? 0 : HALF;
+    const highExt = axis === 'y' ? HEIGHT : HALF;
+    const lead = amount > 0 ? before + highExt : before - lowExt;
 
     const x0 = Math.floor(this.pos.x - HALF),
       x1 = Math.floor(this.pos.x + HALF - 1e-9);
@@ -108,6 +116,8 @@ export class Player {
         for (let bz = z0; bz <= z1; bz++) {
           if (!this.solidAt(bx + 0.5, by + 0.5, bz + 0.5)) continue;
           const coord = axis === 'x' ? bx : axis === 'y' ? by : bz;
+          // keep only blocks ahead of the pre-move leading edge
+          if (amount > 0 ? coord < lead - EPS : coord + 1 > lead + EPS) continue;
           if (!hit) {
             hit = true;
             bound = coord;
@@ -117,20 +127,9 @@ export class Player {
         }
     if (!hit) return;
 
-    if (axis === 'y') {
-      if (amount > 0) this.pos.y = bound - HEIGHT - EPS;
-      else {
-        this.pos.y = bound + 1 + EPS;
-        this.onGround = true;
-      }
-      this.vel.y = 0;
-    } else if (axis === 'x') {
-      this.pos.x = amount > 0 ? bound - HALF - EPS : bound + 1 + HALF + EPS;
-      this.vel.x = 0;
-    } else {
-      this.pos.z = amount > 0 ? bound - HALF - EPS : bound + 1 + HALF + EPS;
-      this.vel.z = 0;
-    }
+    this.pos[axis] = amount > 0 ? bound - highExt - EPS : bound + 1 + lowExt + EPS;
+    this.vel[axis] = 0;
+    if (axis === 'y' && amount < 0) this.onGround = true;
   }
 
   update(dt: number, input: Input): void {
