@@ -88,11 +88,10 @@ export class ChunkManager {
       if (!this.world.getChunk(cx, cz)) this.world.ensureChunk(cx, cz);
     }
 
-    // 2) lighting (one inward flood per chunk). Note: cross-chunk skylight is
-    // seeded from already-lit neighbours but not re-converged when a neighbour
-    // lights later, so deep-shadow regions straddling a chunk border can carry
-    // a subtle brightness step. It is mostly invisible on open terrain; block
-    // edits relight + re-mesh the neighbourhood (world.setBlock) to fix it.
+    // 2) lighting. computeSkylight floods across borders into already-lit
+    // neighbours (raising their light + flagging them to re-mesh), so a chunk
+    // lit before its neighbour still receives that neighbour's flood once it
+    // lights — skylight stays symmetric across the chunk grid.
     for (const [dx, dz] of this.spiral) {
       const d = Math.max(Math.abs(dx), Math.abs(dz));
       if (d > LIGHT_RADIUS) continue;
