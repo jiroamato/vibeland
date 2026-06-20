@@ -90,7 +90,7 @@ export function computeSkylight(world: World, chunk: Chunk): void {
       const target = world.getSkylight(wx, y, wz) - 1;
       if (target > sky[here]) {
         sky[here] = target;
-        push(baseX + lx, y, baseZ + lz);
+        if (target > 1) push(baseX + lx, y, baseZ + lz); // level<=1 can't propagate
       }
     }
   };
@@ -105,6 +105,13 @@ export function computeSkylight(world: World, chunk: Chunk): void {
 
   // --- BFS flood (world space; spills into already-lit neighbours) ---
   while (head < qx.length) {
+    // reclaim consumed slots so peak memory doesn't scale with total enqueues
+    if (head >= 1 << 14 && head * 2 >= qx.length) {
+      qx.splice(0, head);
+      qy.splice(0, head);
+      qz.splice(0, head);
+      head = 0;
+    }
     const wx = qx[head];
     const wy = qy[head];
     const wz = qz[head];
@@ -131,7 +138,7 @@ export function computeSkylight(world: World, chunk: Chunk): void {
       if (target > nc.skylight[nidx]) {
         nc.skylight[nidx] = target;
         if (!isSelf) nc.meshDirty = true; // neighbour's light improved -> re-mesh
-        push(nwx, nwy, nwz);
+        if (target > 1) push(nwx, nwy, nwz); // level<=1 can't propagate
       }
     }
   }
