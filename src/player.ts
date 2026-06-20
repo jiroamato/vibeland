@@ -87,44 +87,50 @@ export class Player {
     return false;
   }
 
+  // Move one axis then resolve against ALL overlapping solids, snapping to the
+  // nearest blocking face in the direction of travel (smallest coord for +,
+  // largest for -). Other axes are assumed already resolved (clear).
   private collideAxis(axis: 'x' | 'y' | 'z', amount: number): void {
     this.pos[axis] += amount;
-    const minX = this.pos.x - HALF;
-    const maxX = this.pos.x + HALF;
-    const minY = this.pos.y;
-    const maxY = this.pos.y + HEIGHT;
-    const minZ = this.pos.z - HALF;
-    const maxZ = this.pos.z + HALF;
+    if (amount === 0) return;
 
-    const x0 = Math.floor(minX),
-      x1 = Math.floor(maxX - 1e-9);
-    const y0 = Math.floor(minY),
-      y1 = Math.floor(maxY - 1e-9);
-    const z0 = Math.floor(minZ),
-      z1 = Math.floor(maxZ - 1e-9);
+    const x0 = Math.floor(this.pos.x - HALF),
+      x1 = Math.floor(this.pos.x + HALF - 1e-9);
+    const y0 = Math.floor(this.pos.y),
+      y1 = Math.floor(this.pos.y + HEIGHT - 1e-9);
+    const z0 = Math.floor(this.pos.z - HALF),
+      z1 = Math.floor(this.pos.z + HALF - 1e-9);
 
+    let hit = false;
+    let bound = 0; // chosen block coordinate on the moving axis
     for (let bx = x0; bx <= x1; bx++)
       for (let by = y0; by <= y1; by++)
         for (let bz = z0; bz <= z1; bz++) {
           if (!this.solidAt(bx + 0.5, by + 0.5, bz + 0.5)) continue;
-          if (axis === 'y') {
-            if (amount > 0) this.pos.y = by - HEIGHT - EPS;
-            else {
-              this.pos.y = by + 1 + EPS;
-              this.onGround = true;
-            }
-            this.vel.y = 0;
-          } else if (axis === 'x') {
-            if (amount > 0) this.pos.x = bx - HALF - EPS;
-            else this.pos.x = bx + 1 + HALF + EPS;
-            this.vel.x = 0;
+          const coord = axis === 'x' ? bx : axis === 'y' ? by : bz;
+          if (!hit) {
+            hit = true;
+            bound = coord;
           } else {
-            if (amount > 0) this.pos.z = bz - HALF - EPS;
-            else this.pos.z = bz + 1 + HALF + EPS;
-            this.vel.z = 0;
+            bound = amount > 0 ? Math.min(bound, coord) : Math.max(bound, coord);
           }
-          return; // resolved this axis
         }
+    if (!hit) return;
+
+    if (axis === 'y') {
+      if (amount > 0) this.pos.y = bound - HEIGHT - EPS;
+      else {
+        this.pos.y = bound + 1 + EPS;
+        this.onGround = true;
+      }
+      this.vel.y = 0;
+    } else if (axis === 'x') {
+      this.pos.x = amount > 0 ? bound - HALF - EPS : bound + 1 + HALF + EPS;
+      this.vel.x = 0;
+    } else {
+      this.pos.z = amount > 0 ? bound - HALF - EPS : bound + 1 + HALF + EPS;
+      this.vel.z = 0;
+    }
   }
 
   update(dt: number, input: Input): void {
@@ -197,25 +203,36 @@ export class Player {
 
     this.onGround = false;
 
-    // --- integrate with collision, axis-separated ---
-    // Y first
-    this.collideAxis('y', this.vel.y * dt);
+    // --- integrate with collision, axis-separated and sub-stepped ---
+    // Sub-step so a single collision step never moves more than ~half a block,
+    // preventing tunnelling through thin geometry at high speed / large dt.
+    const dxMove = this.vel.x * dt;
+    const dyMove = this.vel.y * dt;
+    const dzMove = this.vel.z * dt;
+    const maxMove = Math.max(Math.abs(dxMove), Math.abs(dyMove), Math.abs(dzMove));
+    const steps = Math.max(1, Math.ceil(maxMove / 0.45));
+    const sxMove = dxMove / steps;
+    const syMove = dyMove / steps;
+    const szMove = dzMove / steps;
+    const sneakProtect = this.sneaking && !this.flying;
 
-    // sneak edge protection: undo a horizontal step that walks off a ledge
-    const sneakProtect = this.sneaking && this.onGround && !this.flying;
+    for (let s = 0; s < steps; s++) {
+      this.collideAxis('y', syMove);
 
-    const beforeX = this.pos.x;
-    this.collideAxis('x', this.vel.x * dt);
-    if (sneakProtect && !this.supported(this.pos.x, this.pos.z)) {
-      this.pos.x = beforeX;
-      this.vel.x = 0;
-    }
+      // sneak edge protection: undo a horizontal step that walks off a ledge
+      const beforeX = this.pos.x;
+      this.collideAxis('x', sxMove);
+      if (sneakProtect && this.onGround && !this.supported(this.pos.x, this.pos.z)) {
+        this.pos.x = beforeX;
+        this.vel.x = 0;
+      }
 
-    const beforeZ = this.pos.z;
-    this.collideAxis('z', this.vel.z * dt);
-    if (sneakProtect && !this.supported(this.pos.x, this.pos.z)) {
-      this.pos.z = beforeZ;
-      this.vel.z = 0;
+      const beforeZ = this.pos.z;
+      this.collideAxis('z', szMove);
+      if (sneakProtect && this.onGround && !this.supported(this.pos.x, this.pos.z)) {
+        this.pos.z = beforeZ;
+        this.vel.z = 0;
+      }
     }
 
     // --- camera ---

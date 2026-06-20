@@ -1,4 +1,4 @@
-# Voxel Sandbox — a from-scratch Minecraft-like
+# Vibeland — a from-scratch Minecraft-like
 
 A browser voxel sandbox built from scratch in **TypeScript + Three.js + Vite**. No game
 engines, and no voxel/physics libraries — the chunking, meshing, lighting and collision

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A from-scratch voxel sandbox game inspired by Minecraft (Java Edition), built with TypeScript + Three.js + Vite.",
+  "description": "Vibeland - a from-scratch voxel sandbox game inspired by Minecraft (Java Edition), built with TypeScript + Three.js + Vite.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

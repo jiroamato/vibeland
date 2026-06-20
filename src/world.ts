@@ -85,20 +85,20 @@ export class World {
     c.blocks[blockIndex(lx, wy, lz)] = id;
     c.recomputeHeightMap();
 
-    // Relight this chunk + horizontal neighbours (light spreads up to 15 blocks,
-    // but a 1-chunk relight covers the common case and avoids global passes).
+    // Relight this chunk + horizontal neighbours. Each computeSkylight pass is a
+    // single inward flood, so we iterate twice to let light converge across the
+    // shared borders (chunk -> neighbour -> chunk) before re-meshing.
     const neighbours = [
       c,
       this.getChunk(cx - 1, cz),
       this.getChunk(cx + 1, cz),
       this.getChunk(cx, cz - 1),
       this.getChunk(cx, cz + 1),
-    ];
-    for (const n of neighbours) {
-      if (!n) continue;
-      computeSkylight(this, n);
-      n.meshDirty = true;
+    ].filter((n): n is Chunk => !!n);
+    for (let pass = 0; pass < 2; pass++) {
+      for (const n of neighbours) computeSkylight(this, n);
     }
+    for (const n of neighbours) n.meshDirty = true;
     // Also dirty diagonal neighbours if the edit touched a corner, so AO updates.
     if (lx === 0 || lx === CHUNK_SX - 1 || lz === 0 || lz === CHUNK_SZ - 1) {
       const dx = lx === 0 ? -1 : lx === CHUNK_SX - 1 ? 1 : 0;

@@ -32,6 +32,9 @@ export class Input {
       // Avoid the page scrolling on space etc. while playing.
       if (this.locked && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code))
         e.preventDefault();
+      // F3 (debug toggle) is consumed unconditionally, so always suppress the
+      // browser's Find-Next default.
+      if (e.code === 'F3') e.preventDefault();
       this.held.add(e.code);
       this.justPressed.add(e.code);
       // double-tap detection
@@ -79,6 +82,10 @@ export class Input {
       if (!this.locked) {
         this.held.clear();
         this.leftHeld = this.rightHeld = false;
+        // drop any one-shot/double-tap state so it can't fire on the next lock
+        this.justPressed.clear();
+        this.doubleTapped.clear();
+        this.lastTap.clear();
       }
       this.onLockChange(this.locked);
     });

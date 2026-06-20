@@ -91,6 +91,7 @@ let fpsFrames = 0;
 let fps = 0;
 
 function selectFromInput() {
+  if (!input.locked) return; // don't change selection while paused/overlay up
   for (let i = 1; i <= 9; i++) if (input.wasPressed('Digit' + i)) ui.setSelected(i - 1);
   const w = input.consumeWheel();
   if (w !== 0) ui.setSelected(ui.selected + w);

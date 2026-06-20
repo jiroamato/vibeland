@@ -60,7 +60,7 @@ export class UI {
   updateDebug(d: DebugInfo): void {
     if (!this.debugVisible) return;
     this.debugEl.textContent =
-      `Voxel Sandbox  (TS + Three.js)\n` +
+      `Vibeland  (TS + Three.js)\n` +
       `${d.fps} fps\n` +
       `XYZ: ${d.x.toFixed(2)} / ${d.y.toFixed(2)} / ${d.z.toFixed(2)}\n` +
       `Block: ${Math.floor(d.x)} ${Math.floor(d.y)} ${Math.floor(d.z)}\n` +

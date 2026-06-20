@@ -252,7 +252,9 @@ export function buildChunkGeometry(world: World, chunk: Chunk): ChunkGeometry {
               sum += getSky(x + s2[0], y + s2[1], z + s2[2]);
               cnt++;
             }
-            if (!oc) {
+            // mirror the AO occlusion: a sealed concave corner (both sides
+            // opaque) is geometrically hidden, so it must not leak light either.
+            if (!oc && !(o1 && o2)) {
               sum += getSky(x + co[0], y + co[1], z + co[2]);
               cnt++;
             }
