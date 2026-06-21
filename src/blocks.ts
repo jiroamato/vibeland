@@ -24,7 +24,7 @@ export type BlockId = number;
 
 export const enum RenderLayer {
   Opaque = 0,
-  Cutout = 1, // alpha-tested (glass): crisp see-through holes, writes depth
+  Cutout = 1, // alpha-blended translucent pane (glass); see-through, no depth write
   Translucent = 2, // alpha-blended (water): no depth write
 }
 
