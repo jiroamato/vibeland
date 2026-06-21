@@ -14,7 +14,7 @@ import { Interaction } from './interaction';
 import { Picker } from './picker';
 import { ChunkManager } from './chunkManager';
 import { makeChunkMaterials } from './chunkMaterial';
-import { generateDefaultTiles, buildAtlas, paintAtlas } from './textures';
+import { generateDefaultTiles, buildAtlas, paintAtlas, loadToolTextures } from './textures';
 import { loadResourcePack } from './resourcepack';
 import { CHUNK_SX, CHUNK_SZ, floorDiv } from './constants';
 
@@ -56,6 +56,16 @@ picker.onPick = (slot, item) => {
   held.setItem(ui.selectedItem);
 };
 
+// Load the open-source (Minetest, CC BY-SA) tool textures asynchronously; until
+// they arrive the procedural sprites are used. On success, refresh the icons and
+// the held 3D mesh so they swap in seamlessly.
+loadToolTextures().then((ok) => {
+  if (!ok) return;
+  ui.buildHotbar(tiles);
+  picker.build(tiles);
+  held.refreshTools();
+});
+
 // spawn the player above the surface near origin
 player.spawn(0, 0);
 
@@ -93,6 +103,7 @@ function closePicker() {
   input.requestLock(); // gesture-safe: called from the keydown handler below
 }
 window.addEventListener('keydown', (e) => {
+  if (e.repeat) return; // ignore OS key-repeat so a held key can't thrash the picker
   if (e.code === 'KeyE') {
     if (!started) return;
     e.preventDefault();

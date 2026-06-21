@@ -33,7 +33,7 @@ export class Picker {
     // While open, 1–9 retarget the slot. Open/close (E/Esc) is owned by main.ts
     // so a single keypress can't both close and reopen the picker.
     window.addEventListener('keydown', (e) => {
-      if (!this.open) return;
+      if (e.repeat || !this.open) return;
       if (e.code.length === 6 && e.code.startsWith('Digit')) {
         const n = Number(e.code.slice(5));
         if (n >= 1 && n <= 9) {
