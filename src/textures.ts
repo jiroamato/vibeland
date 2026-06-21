@@ -233,23 +233,25 @@ function genLeaves(seed: number): Tile {
   return t;
 }
 
-function genGlass(seed: number): Tile {
+function genGlass(_seed: number): Tile {
   const t = new Tile();
-  const r = rng(seed);
-  // transparent body
-  t.fill([0, 0, 0, 0]);
-  const frame: RGBA = [201, 224, 232, 255];
-  // border frame
+  // Faint translucent blue-white pane (alpha-blended), so glass reads as glass
+  // — visible but see-through — rather than a fully clear (invisible) hole.
+  const body: RGBA = [170, 208, 230, 92];
+  t.fill(body);
+  // defined border frame
+  const frame: RGBA = [228, 242, 250, 235];
   for (let i = 0; i < 16; i++) {
     t.set(i, 0, frame);
     t.set(i, 15, frame);
     t.set(0, i, frame);
     t.set(15, i, frame);
   }
-  // a few faint inner edge pixels + a diagonal highlight streak
-  for (let i = 2; i < 13; i++) if (r() < 0.5) t.set(i, i, [255, 255, 255, 150]);
-  t.set(3, 12, [255, 255, 255, 120]);
-  t.set(12, 3, [255, 255, 255, 120]);
+  // inner corner accents
+  for (const [cx, cy] of [[1, 1], [14, 1], [1, 14], [14, 14]] as const) t.set(cx, cy, frame);
+  // diagonal reflection streaks (the classic glass shine)
+  for (let i = 0; i < 6; i++) t.set(3 + i, 11 - i, [255, 255, 255, 170]);
+  for (let i = 0; i < 3; i++) t.set(9 + i, 12 - i, [255, 255, 255, 130]);
   return t;
 }
 

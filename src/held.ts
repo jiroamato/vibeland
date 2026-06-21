@@ -24,7 +24,14 @@ export class HeldItem {
     this.camera = new THREE.PerspectiveCamera(60, aspect, 0.01, 10);
     this.camera.position.set(0, 0, 0);
 
-    const mat = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true });
+    // transparent so alpha-blended blocks (glass) render their tint instead of
+    // a black center; DoubleSide lets you see through a glass block's near face.
+    const mat = new THREE.MeshBasicMaterial({
+      map: atlas,
+      vertexColors: true,
+      transparent: true,
+      side: THREE.DoubleSide,
+    });
     this.geom = new THREE.BoxGeometry(1, 1, 1);
     // snapshot the original 0/1 UVs so re-skinning always maps from a clean base
     this.baseUV = (this.geom.getAttribute('uv').array as Float32Array).slice();
