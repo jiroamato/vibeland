@@ -592,25 +592,30 @@ function deriveNetherite(steel: HTMLCanvasElement): HTMLCanvasElement {
  */
 export async function loadToolTextures(): Promise<boolean> {
   try {
-    await Promise.all(
+    // Fetch into local pairs and only commit to the shared cache once ALL
+    // succeed. A failed fetch rejects Promise.all but does NOT cancel its
+    // siblings, so mutating the cache mid-flight (and clearing it in catch)
+    // would race: a late sibling could repopulate the just-cleared cache,
+    // leaving a half-asset/half-procedural state. Commit-on-full-success avoids it.
+    const loaded = await Promise.all(
       TOOL_TYPES.flatMap((tool) =>
-        TIERS.filter((tier) => TIER_FILE[tier] !== null).map(async (tier) => {
+        TIERS.filter((tier) => TIER_FILE[tier] !== null).map(async (tier): Promise<[string, HTMLCanvasElement]> => {
           const url = `assets/tools/${TOOL_FILE[tool]}_${TIER_FILE[tier]}.png`;
           const res = await fetch(url);
           if (!res.ok) throw new Error(url);
           const bmp = await createImageBitmap(await res.blob());
-          assetCanvasCache.set(toolCacheKey(tool, tier), imageToCanvas(bmp));
+          return [toolCacheKey(tool, tier), imageToCanvas(bmp)];
         }),
       ),
     );
+    for (const [key, canvas] of loaded) assetCanvasCache.set(key, canvas);
     for (const tool of TOOL_TYPES) {
       const steel = assetCanvasCache.get(toolCacheKey(tool, Tier.Iron));
       if (steel) assetCanvasCache.set(toolCacheKey(tool, Tier.Netherite), deriveNetherite(steel));
     }
     return true;
   } catch {
-    assetCanvasCache.clear(); // partial load → fall back to procedural everywhere
-    return false;
+    return false; // never touched the shared cache → procedural fallback stays intact
   }
 }
 
