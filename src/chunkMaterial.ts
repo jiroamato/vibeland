@@ -49,14 +49,15 @@ export function makeChunkMaterials(atlas: THREE.Texture): ChunkMaterials {
   const opaque = new THREE.MeshBasicMaterial({ ...base, side: THREE.FrontSide });
   patch(opaque);
 
-  // Glass: alpha-blended translucent pane that still writes depth, so it reads
-  // as glass (visible tint) yet you see the world through it and it occludes
-  // correctly. (This is the RenderLayer.Cutout slot; glass is its only block.)
+  // Glass: alpha-blended translucent pane. depthWrite is OFF (like water) so
+  // stacked glass panes sort back-to-front and stay visible through each other
+  // rather than the nearer pane's body occluding the farther one. (This is the
+  // RenderLayer.Cutout slot; glass is its only block.)
   const cutout = new THREE.MeshBasicMaterial({
     ...base,
     side: THREE.FrontSide,
     transparent: true,
-    depthWrite: true,
+    depthWrite: false,
   });
   patch(cutout);
 

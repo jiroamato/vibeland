@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import * as THREE from 'three';
-import { BlockId, blockDef } from './blocks';
+import { BlockId, blockDef, RenderLayer } from './blocks';
 import { tileUV } from './textures';
 
 const SWING_DUR = 0.28;
@@ -16,6 +16,7 @@ export class HeldItem {
   camera: THREE.PerspectiveCamera;
   private mesh: THREE.Mesh;
   private geom: THREE.BoxGeometry;
+  private mat: THREE.MeshBasicMaterial;
   private baseUV!: Float32Array; // pristine 0/1 box UVs to remap from
   private currentBlock = -1;
   private phase = 0; // 0 == idle, (0,1] == mid-swing
@@ -24,18 +25,13 @@ export class HeldItem {
     this.camera = new THREE.PerspectiveCamera(60, aspect, 0.01, 10);
     this.camera.position.set(0, 0, 0);
 
-    // transparent so alpha-blended blocks (glass) render their tint instead of
-    // a black center; DoubleSide lets you see through a glass block's near face.
-    const mat = new THREE.MeshBasicMaterial({
-      map: atlas,
-      vertexColors: true,
-      transparent: true,
-      side: THREE.DoubleSide,
-    });
+    // Opaque by default; setBlock() switches to transparent + DoubleSide only
+    // for see-through blocks (glass) so opaque blocks aren't double-drawn.
+    this.mat = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true });
     this.geom = new THREE.BoxGeometry(1, 1, 1);
     // snapshot the original 0/1 UVs so re-skinning always maps from a clean base
     this.baseUV = (this.geom.getAttribute('uv').array as Float32Array).slice();
-    this.mesh = new THREE.Mesh(this.geom, mat);
+    this.mesh = new THREE.Mesh(this.geom, this.mat);
     this.mesh.scale.setScalar(0.42);
     this.scene.add(this.mesh);
 
@@ -46,6 +42,12 @@ export class HeldItem {
     if (id === this.currentBlock) return;
     this.currentBlock = id;
     const def = blockDef(id);
+    // see-through blocks (glass) need alpha blending + both sides; opaque blocks
+    // stay single-sided/opaque so the held draw isn't doubled.
+    const seeThrough = def.layer !== RenderLayer.Opaque;
+    this.mat.transparent = seeThrough;
+    this.mat.side = seeThrough ? THREE.DoubleSide : THREE.FrontSide;
+    this.mat.needsUpdate = true;
     const uv = this.geom.getAttribute('uv') as THREE.BufferAttribute;
     const colors = new Float32Array(24 * 3);
     for (let face = 0; face < 6; face++) {
