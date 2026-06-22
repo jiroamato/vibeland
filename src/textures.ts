@@ -8,8 +8,9 @@
 // ---------------------------------------------------------------------------
 
 import * as THREE from 'three';
-import { TILE_COUNT } from './blocks';
+import { TILE_COUNT, ToolType } from './blocks';
 import { blockDef, BlockId } from './blocks';
+import { Tier, Item, TOOL_TYPES, TIERS } from './items';
 
 export const TILE_RES = 16;
 
@@ -440,4 +441,220 @@ export function makeBlockIcon(blockId: BlockId, tiles: HTMLCanvasElement[], size
   void R2;
 
   return cv;
+}
+
+// ---------------------------------------------------------------------------
+// Tool sprites: procedural 16x16 flat item icons (transparent background). A
+// shared brown stick plus a per-tool head shape, recoloured per material tier.
+// Used both as upscaled HUD icons and as the texture on the held tool plane.
+// ---------------------------------------------------------------------------
+
+interface Palette {
+  outline: RGBA; // shadow side (bottom/right edges)
+  base: RGBA; // interior
+  light: RGBA; // lit side (top/left edges)
+  dark: RGBA; // handle shadow column
+}
+
+const HANDLE_PAL: Palette = {
+  outline: [60, 42, 24, 255],
+  base: [122, 88, 52, 255],
+  light: [150, 112, 70, 255],
+  dark: [92, 64, 36, 255],
+};
+
+// Material tier palette for tool heads.
+const TIER_PAL: Record<Tier, Palette> = {
+  [Tier.Wood]: { outline: [78, 54, 28, 255], base: [152, 110, 64, 255], light: [184, 144, 96, 255], dark: [120, 84, 46, 255] },
+  [Tier.Stone]: { outline: [56, 56, 56, 255], base: [126, 126, 126, 255], light: [162, 162, 162, 255], dark: [96, 96, 96, 255] },
+  [Tier.Iron]: { outline: [120, 120, 120, 255], base: [214, 214, 214, 255], light: [244, 244, 244, 255], dark: [178, 178, 178, 255] },
+  [Tier.Gold]: { outline: [150, 108, 22, 255], base: [248, 208, 62, 255], light: [255, 240, 154, 255], dark: [210, 162, 32, 255] },
+  [Tier.Diamond]: { outline: [40, 140, 134, 255], base: [98, 224, 214, 255], light: [172, 248, 240, 255], dark: [56, 188, 178, 255] },
+  [Tier.Netherite]: { outline: [22, 16, 20, 255], base: [82, 72, 80, 255], light: [116, 104, 114, 255], dark: [52, 44, 52, 255] },
+};
+
+// Rows of [y, x0, x1] inclusive ranges → flat list of [x, y] pixels.
+function rangesToPts(rows: [number, number, number][]): [number, number][] {
+  const pts: [number, number][] = [];
+  for (const [y, x0, x1] of rows) for (let x = x0; x <= x1; x++) pts.push([x, y]);
+  return pts;
+}
+
+// Filled head silhouettes per tool (16x16), drawn in the upper-right where the
+// shared handle ends near (8,7). Auto-shading turns each into pixel art.
+const HEADS: Record<ToolType, [number, number][]> = {
+  // wide head bar with two down-tips and a central neck to the handle
+  [ToolType.Pickaxe]: [
+    ...rangesToPts([[2, 4, 12], [3, 3, 13]]),
+    [3, 4], [13, 4], // tips
+    ...rangesToPts([[4, 8, 9], [5, 8, 9], [6, 8, 9]]), // neck
+  ],
+  // chunky blade to the right of the handle top
+  [ToolType.Axe]: rangesToPts([[2, 10, 12], [3, 9, 13], [4, 9, 13], [5, 9, 12], [6, 9, 10]]),
+  // rounded spade blade above the handle
+  [ToolType.Shovel]: rangesToPts([[1, 7, 9], [2, 6, 10], [3, 6, 10], [4, 6, 10], [5, 7, 9], [6, 8, 9]]),
+  // top bar with a short downward flange (the classic hoe L)
+  [ToolType.Hoe]: rangesToPts([[2, 8, 13], [3, 8, 13], [4, 8, 9], [5, 8, 9], [6, 8, 9]]),
+};
+
+// The shared wooden handle: a 2px diagonal stick, lit on its upper-left column
+// and shaded on its lower-right column.
+function drawHandle(t: Tile): void {
+  for (let s = 0; s <= 6; s++) {
+    const x = 2 + s;
+    const y = 13 - s;
+    t.set(x, y, HANDLE_PAL.base);
+    t.set(x + 1, y, HANDLE_PAL.dark);
+  }
+  t.set(2, 13, HANDLE_PAL.outline); // grounded bottom tip
+}
+
+// Directional shading: bottom/right edges → outline (shadow), top/left edges →
+// light, fully-enclosed pixels → base. Gives flat silhouettes a 3D read.
+function drawShadedMask(t: Tile, pts: [number, number][], pal: Palette): void {
+  const set = new Set(pts.map(([x, y]) => x + ',' + y));
+  const has = (x: number, y: number) => set.has(x + ',' + y);
+  for (const [x, y] of pts) {
+    const shadow = !has(x, y + 1) || !has(x + 1, y);
+    const lit = !has(x, y - 1) || !has(x - 1, y);
+    t.set(x, y, shadow ? pal.outline : lit ? pal.light : pal.base);
+  }
+}
+
+function genToolSprite(toolType: ToolType, tier: Tier): Tile {
+  const t = new Tile();
+  drawHandle(t); // handle first…
+  drawShadedMask(t, HEADS[toolType], TIER_PAL[tier]); // …head drawn over its top
+  return t;
+}
+
+// Cache key shared by every tool-sprite cache.
+const toolCacheKey = (toolType: ToolType, tier: Tier) => toolType + ':' + tier;
+
+// --- open-source Minetest textures (CC BY-SA 3.0) ---------------------------
+// Loaded from /assets/tools (see public/assets/tools/ATTRIBUTION.md). The
+// procedural genToolSprite above stays as a fallback if the assets fail to load.
+const TOOL_FILE: Record<ToolType, string> = {
+  [ToolType.Pickaxe]: 'pick',
+  [ToolType.Axe]: 'axe',
+  [ToolType.Shovel]: 'shovel',
+  [ToolType.Hoe]: 'hoe',
+};
+// Minetest tier filename per Vibeland tier; Netherite is derived from steel.
+const TIER_FILE: Record<Tier, string | null> = {
+  [Tier.Wood]: 'wood',
+  [Tier.Stone]: 'stone',
+  [Tier.Iron]: 'steel',
+  [Tier.Gold]: 'mese',
+  [Tier.Diamond]: 'diamond',
+  [Tier.Netherite]: null,
+};
+
+const assetCanvasCache = new Map<string, HTMLCanvasElement>();
+const fallbackCache = new Map<string, HTMLCanvasElement>();
+
+function imageToCanvas(img: ImageBitmap): HTMLCanvasElement {
+  const cv = document.createElement('canvas');
+  cv.width = TILE_RES;
+  cv.height = TILE_RES;
+  const ctx = cv.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0, TILE_RES, TILE_RES);
+  return cv;
+}
+
+// Recolour a steel (grayscale metal + brown handle) canvas into netherite:
+// darken the metal pixels toward a dark purple-grey, keep the wooden handle.
+function deriveNetherite(steel: HTMLCanvasElement): HTMLCanvasElement {
+  const cv = document.createElement('canvas');
+  cv.width = TILE_RES;
+  cv.height = TILE_RES;
+  const ctx = cv.getContext('2d')!;
+  const img = steel.getContext('2d')!.getImageData(0, 0, TILE_RES, TILE_RES);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 40) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if (r - b > 18) continue; // warm brown = wooden handle, leave untouched
+    const lum = (r + g + b) / 3;
+    d[i] = lum * 0.42;
+    d[i + 1] = lum * 0.37;
+    d[i + 2] = lum * 0.45;
+  }
+  ctx.putImageData(img, 0, 0);
+  return cv;
+}
+
+/**
+ * Fetch the Minetest tool textures into 16x16 canvases keyed by (tool, tier),
+ * deriving netherite from steel. Resolves true if the assets loaded; on any
+ * failure the procedural sprites are used instead. Call once at startup.
+ */
+export async function loadToolTextures(): Promise<boolean> {
+  try {
+    // Fetch into local pairs and only commit to the shared cache once ALL
+    // succeed. A failed fetch rejects Promise.all but does NOT cancel its
+    // siblings, so mutating the cache mid-flight (and clearing it in catch)
+    // would race: a late sibling could repopulate the just-cleared cache,
+    // leaving a half-asset/half-procedural state. Commit-on-full-success avoids it.
+    const loaded = await Promise.all(
+      TOOL_TYPES.flatMap((tool) =>
+        TIERS.map((tier) => ({ tool, tier, file: TIER_FILE[tier] }))
+          // Type-predicate filter narrows `file` to string, so a future second
+          // null tier is excluded here instead of fetching "..._null.png".
+          .filter((e): e is { tool: ToolType; tier: Tier; file: string } => e.file !== null)
+          .map(async ({ tool, tier, file }): Promise<[string, HTMLCanvasElement]> => {
+            const url = `assets/tools/${TOOL_FILE[tool]}_${file}.png`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(url);
+            const bmp = await createImageBitmap(await res.blob());
+            return [toolCacheKey(tool, tier), imageToCanvas(bmp)];
+          }),
+      ),
+    );
+    for (const [key, canvas] of loaded) assetCanvasCache.set(key, canvas);
+    for (const tool of TOOL_TYPES) {
+      const steel = assetCanvasCache.get(toolCacheKey(tool, Tier.Iron));
+      if (steel) assetCanvasCache.set(toolCacheKey(tool, Tier.Netherite), deriveNetherite(steel));
+    }
+    return true;
+  } catch {
+    return false; // never touched the shared cache → procedural fallback stays intact
+  }
+}
+
+/** The 16x16 sprite canvas for a tool: loaded asset if present, else procedural. */
+function toolSpriteCanvas(toolType: ToolType, tier: Tier): HTMLCanvasElement {
+  const k = toolCacheKey(toolType, tier);
+  const asset = assetCanvasCache.get(k);
+  if (asset) return asset;
+  let cv = fallbackCache.get(k);
+  if (!cv) {
+    cv = genToolSprite(toolType, tier).toCanvas();
+    fallbackCache.set(k, cv);
+  }
+  return cv;
+}
+
+/** 16x16 RGBA pixels for a tool sprite (used by the 3D held extrusion). */
+export function toolPixels(toolType: ToolType, tier: Tier): Uint8ClampedArray {
+  return toolSpriteCanvas(toolType, tier).getContext('2d')!.getImageData(0, 0, TILE_RES, TILE_RES).data;
+}
+
+/** Upscaled flat tool icon for the hotbar / picker. */
+export function makeToolIcon(toolType: ToolType, tier: Tier, size = 64): HTMLCanvasElement {
+  const cv = document.createElement('canvas');
+  cv.width = size;
+  cv.height = size;
+  const ctx = cv.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(toolSpriteCanvas(toolType, tier), 0, 0, TILE_RES, TILE_RES, 0, 0, size, size);
+  return cv;
+}
+
+/** Icon for any hotbar/picker item: block iso-icon or flat tool sprite. */
+export function makeItemIcon(item: Item, tiles: HTMLCanvasElement[], size = 64): HTMLCanvasElement {
+  return item.kind === 'block'
+    ? makeBlockIcon(item.block, tiles, size)
+    : makeToolIcon(item.tool, item.tier, size);
 }
