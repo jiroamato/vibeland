@@ -9,7 +9,7 @@ import type { World } from './world';
 import { Player } from './player';
 import { Input } from './input';
 import { Blocks, blockDef } from './blocks';
-import { Item, breakSeconds } from './items';
+import { Item, breakSeconds, itemKey } from './items';
 
 const REACH = 4.5;
 
@@ -189,7 +189,10 @@ export class Interaction {
     this.outline.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
 
     // --- breaking (hold left) ---
-    const key = hit.x + ',' + hit.y + ',' + hit.z;
+    // Key on the held item too, so switching tools mid-break resets progress
+    // (vanilla behaviour) instead of letting time banked with a slow tool
+    // instantly complete the break once a faster tool is selected.
+    const key = hit.x + ',' + hit.y + ',' + hit.z + '|' + itemKey(selected);
     const id = world.getBlock(hit.x, hit.y, hit.z);
     const def = blockDef(id);
     // Break time depends on the held item: correct tool + tier mine far faster.

@@ -599,13 +599,17 @@ export async function loadToolTextures(): Promise<boolean> {
     // leaving a half-asset/half-procedural state. Commit-on-full-success avoids it.
     const loaded = await Promise.all(
       TOOL_TYPES.flatMap((tool) =>
-        TIERS.filter((tier) => TIER_FILE[tier] !== null).map(async (tier): Promise<[string, HTMLCanvasElement]> => {
-          const url = `assets/tools/${TOOL_FILE[tool]}_${TIER_FILE[tier]}.png`;
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(url);
-          const bmp = await createImageBitmap(await res.blob());
-          return [toolCacheKey(tool, tier), imageToCanvas(bmp)];
-        }),
+        TIERS.map((tier) => ({ tool, tier, file: TIER_FILE[tier] }))
+          // Type-predicate filter narrows `file` to string, so a future second
+          // null tier is excluded here instead of fetching "..._null.png".
+          .filter((e): e is { tool: ToolType; tier: Tier; file: string } => e.file !== null)
+          .map(async ({ tool, tier, file }): Promise<[string, HTMLCanvasElement]> => {
+            const url = `assets/tools/${TOOL_FILE[tool]}_${file}.png`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(url);
+            const bmp = await createImageBitmap(await res.blob());
+            return [toolCacheKey(tool, tier), imageToCanvas(bmp)];
+          }),
       ),
     );
     for (const [key, canvas] of loaded) assetCanvasCache.set(key, canvas);

@@ -62,6 +62,7 @@ export class HeldItem {
   private baseUV!: Float32Array; // pristine 0/1 box UVs to remap from
   private toolMesh: THREE.Mesh;
   private toolGeoCache = new Map<string, THREE.BufferGeometry>();
+  private placeholderGeo: THREE.BufferGeometry | null = null; // disposed on first real tool geo
   private kind: 'block' | 'tool' = 'block';
   private currentItem: Item | null = null;
   private currentKey = ''; // itemKey of the current item; skip redundant rebuilds
@@ -80,9 +81,11 @@ export class HeldItem {
     this.cube.scale.setScalar(0.42);
     this.scene.add(this.cube);
 
-    // Tool extrusion. Vertex-coloured, DoubleSide so winding never matters.
+    // Tool extrusion. Vertex-coloured, DoubleSide so winding never matters. The
+    // empty placeholder is disposed the first time a real tool geometry replaces it.
+    this.placeholderGeo = new THREE.BufferGeometry();
     this.toolMesh = new THREE.Mesh(
-      new THREE.BufferGeometry(),
+      this.placeholderGeo,
       new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
     );
     this.toolMesh.scale.setScalar(0.62);
@@ -110,6 +113,10 @@ export class HeldItem {
         this.toolGeoCache.set(key, geo);
       }
       this.toolMesh.geometry = geo;
+      if (this.placeholderGeo) {
+        this.placeholderGeo.dispose();
+        this.placeholderGeo = null;
+      }
     }
   }
 
