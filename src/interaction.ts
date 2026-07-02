@@ -168,7 +168,7 @@ export class Interaction {
   }
 
   /** Returns true if the player swung (broke or placed) this frame. */
-  update(dt: number, input: Input, player: Player, world: World, selected: Item): boolean {
+  update(dt: number, input: Input, player: Player, world: World, selected: Item | null): boolean {
     const origin = player.eyePosition;
     const dir = player.getLookDir();
     const hit = raycast(world, origin, dir);
@@ -192,7 +192,7 @@ export class Interaction {
     // Key on the held item too, so switching tools mid-break resets progress
     // (vanilla behaviour) instead of letting time banked with a slow tool
     // instantly complete the break once a faster tool is selected.
-    const key = hit.x + ',' + hit.y + ',' + hit.z + '|' + itemKey(selected);
+    const key = hit.x + ',' + hit.y + ',' + hit.z + '|' + (selected ? itemKey(selected) : 'hand');
     const id = world.getBlock(hit.x, hit.y, hit.z);
     const def = blockDef(id);
     // Break time depends on the held item: correct tool + tier mine far faster.
@@ -231,7 +231,7 @@ export class Interaction {
 
     // --- placing (right-click) --- only blocks place; tools just swing.
     if (input.rightJustPressed) {
-      if (selected.kind === 'block') {
+      if (selected && selected.kind === 'block') {
         const px = hit.x + hit.nx;
         const py = hit.y + hit.ny;
         const pz = hit.z + hit.nz;

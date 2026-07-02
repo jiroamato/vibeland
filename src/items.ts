@@ -110,20 +110,24 @@ export function maxStack(item: Item): number {
  * type for the block (else 1). canHarvest requires no tool, or the correct tool
  * at a high-enough mining level. Returns Infinity for unbreakable blocks.
  */
-export function breakSeconds(def: BlockDef, item: Item): number {
-  if (!Number.isFinite(def.hardness)) return Infinity;
+/** Can this break yield a drop / take the fast 1.5x path? (vanilla rule) */
+export function canHarvest(def: BlockDef, item: Item | null): boolean {
   let correct = false;
-  let speed = 1;
   let level = 0;
-  if (item.kind === 'tool') {
+  if (item && item.kind === 'tool') {
     correct = def.tool !== null && item.tool === def.tool;
-    if (correct) {
-      speed = TIER_SPEED[item.tier];
-      level = TIER_LEVEL[item.tier];
-    }
+    if (correct) level = TIER_LEVEL[item.tier];
   }
-  const canHarvest = !def.requiresTool || (correct && level >= def.tierNeeded);
-  return (def.hardness * (canHarvest ? 1.5 : 5)) / speed;
+  return !def.requiresTool || (correct && level >= def.tierNeeded);
+}
+
+export function breakSeconds(def: BlockDef, item: Item | null): number {
+  if (!Number.isFinite(def.hardness)) return Infinity;
+  let speed = 1;
+  if (item && item.kind === 'tool' && def.tool !== null && item.tool === def.tool) {
+    speed = TIER_SPEED[item.tier];
+  }
+  return (def.hardness * (canHarvest(def, item) ? 1.5 : 5)) / speed;
 }
 
 /** The default 9-slot hotbar: the placeable blocks, exactly as before tools. */

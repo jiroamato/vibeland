@@ -99,11 +99,16 @@ export class HeldItem {
     this.scene.add(this.toolPivot);
   }
 
-  setItem(item: Item): void {
-    const key = itemKey(item);
+  setItem(item: Item | null): void {
+    const key = item ? itemKey(item) : 'none';
     if (key === this.currentKey) return;
     this.currentKey = key;
     this.currentItem = item;
+    if (!item) {
+      this.cube.visible = false;
+      this.toolPivot.visible = false;
+      return;
+    }
     if (item.kind === 'block') {
       this.kind = 'block';
       this.cube.visible = true;

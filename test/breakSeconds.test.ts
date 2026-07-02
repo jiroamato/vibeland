@@ -58,6 +58,11 @@ describe('breakSeconds — vanilla break-time formula', () => {
     expect(breakSeconds(glass, tool(ToolType.Pickaxe, Tier.Diamond))).toBeCloseTo(0.45, 5);
   });
 
+  it('empty hand: no-tool blocks harvest at 1.5x, tool-required at 5x', () => {
+    expect(breakSeconds(blockDef(Blocks.DIRT), null)).toBeCloseTo(0.5 * 1.5);
+    expect(breakSeconds(blockDef(Blocks.STONE), null)).toBeCloseTo(1.5 * 5);
+  });
+
   it('bedrock and water are unbreakable', () => {
     expect(breakSeconds(blockDef(Blocks.BEDROCK), tool(ToolType.Pickaxe, Tier.Netherite))).toBe(Infinity);
     expect(breakSeconds(blockDef(Blocks.WATER), hand)).toBe(Infinity);
