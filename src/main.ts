@@ -19,6 +19,9 @@ import { loadResourcePack } from './resourcepack';
 import { CHUNK_SX, CHUNK_SZ, floorDiv } from './constants';
 import { GameMode, GameRules, rulesFor } from './gamemode';
 import { Inventory, HOTBAR_SIZE } from './inventory';
+import { DropManager, EntityWorld } from './itemEntity';
+import { buildDropMesh } from './itemMesh';
+import { blockDef } from './blocks';
 
 // --- renderer / scene ---
 const app = document.getElementById('app')!;
@@ -46,6 +49,19 @@ const ui = new UI();
 const interaction = new Interaction(scene);
 const input = new Input(renderer.domElement);
 const chunks = new ChunkManager(world, scene, materials);
+
+// --- item drops (survival) ---
+const entityWorld: EntityWorld = {
+  solidAt: (x, y, z) => blockDef(world.getBlock(Math.floor(x), Math.floor(y), Math.floor(z))).solid,
+  chunkLoaded: (wx, wz) => world.getChunk(floorDiv(Math.floor(wx), CHUNK_SX), floorDiv(Math.floor(wz), CHUNK_SZ)) !== undefined,
+};
+const drops = new DropManager(entityWorld, (item) => buildDropMesh(item, atlasTexture), scene);
+
+function syncHotbar() {
+  if (!inventory) return;
+  ui.setStacks(inventory.slots.slice(0, HOTBAR_SIZE));
+  held.setItem(ui.selectedItem);
+}
 
 ui.buildHotbar(tiles);
 const picker = new Picker(tiles);
@@ -219,7 +235,9 @@ function frame(now: number) {
   let swung = false;
   if (started && input.locked) {
     player.update(dt, input);
-    swung = interaction.update(dt, input, player, world, ui.selectedItem);
+    const survival = inventory ? { drops, inventory, selectedSlot: ui.selected, onChange: syncHotbar } : null;
+    swung = interaction.update(dt, input, player, world, ui.selectedItem, survival);
+    drops.update(dt, player.pos, inventory, syncHotbar);
   } else {
     // keep camera oriented even while paused
     player.camera.rotation.y = player.yaw;
@@ -257,4 +275,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle (handy in the console: e.g. __game.player.pos, __game.sky.time).
-(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held, mode: () => mode, inventory: () => inventory };
+(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held, drops, mode: () => mode, inventory: () => inventory };
