@@ -4,6 +4,7 @@
 // ---------------------------------------------------------------------------
 
 import { Item, defaultHotbar } from './items';
+import { ItemStack } from './inventory';
 import { makeItemIcon } from './textures';
 
 export interface DebugInfo {
@@ -25,8 +26,10 @@ export class UI {
   private fpsEl = document.getElementById('fps')!;
   private slots: HTMLElement[] = [];
   private tiles: HTMLCanvasElement[] = [];
-  /** The 9 hotbar items. Defaults to the placeable blocks; the picker swaps in tools. */
-  hotbar: Item[] = defaultHotbar();
+  /** The 9 visible hotbar stacks. Creative wraps plain items with count 1. */
+  hotbar: (ItemStack | null)[] = defaultHotbar().map((item) => ({ item, count: 1 }));
+  /** Show count badges (survival). Creative leaves them hidden. */
+  showCounts = false;
   selected = 0;
   debugVisible = false;
 
@@ -52,20 +55,37 @@ export class UI {
     });
   }
 
-  /** (Re)draw a single slot's icon from its current item. */
+  /** (Re)draw a single slot's icon (and survival count badge) from its stack. */
   private renderSlotIcon(i: number): void {
     const slot = this.slots[i];
     if (!slot) return;
     slot.querySelector('canvas')?.remove();
-    const icon = makeItemIcon(this.hotbar[i], this.tiles, 64);
+    slot.querySelector('.count')?.remove();
+    const stack = this.hotbar[i];
+    if (!stack) return;
+    const icon = makeItemIcon(stack.item, this.tiles, 64);
     slot.insertBefore(icon, slot.firstChild);
+    if (this.showCounts && stack.count > 1) {
+      const badge = document.createElement('span');
+      badge.className = 'count';
+      badge.textContent = String(stack.count);
+      slot.appendChild(badge);
+    }
   }
 
   /** Replace the item in a slot (used by the creative picker). */
   setSlotItem(i: number, item: Item): void {
     if (i < 0 || i >= this.hotbar.length) return;
-    this.hotbar[i] = item;
+    this.hotbar[i] = { item, count: 1 };
     this.renderSlotIcon(i);
+  }
+
+  /** Survival: mirror inventory slots 0-8 into the hotbar and re-render. */
+  setStacks(stacks: (ItemStack | null)[]): void {
+    for (let i = 0; i < this.hotbar.length; i++) {
+      this.hotbar[i] = stacks[i] ?? null;
+      this.renderSlotIcon(i);
+    }
   }
 
   setSelected(i: number): void {
@@ -74,8 +94,8 @@ export class UI {
     this.slots.forEach((s, idx) => s.classList.toggle('selected', idx === this.selected));
   }
 
-  get selectedItem(): Item {
-    return this.hotbar[this.selected];
+  get selectedItem(): Item | null {
+    return this.hotbar[this.selected]?.item ?? null;
   }
 
   toggleDebug(): void {
