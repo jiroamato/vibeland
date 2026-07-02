@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { BlockId, blockDef, RenderLayer } from './blocks';
-import { Item } from './items';
+import { Item, itemKey } from './items';
 import { tileUV, toolPixels, materialPixels } from './textures';
 
 export const FACE_SHADE = [0.6, 0.6, 1.0, 0.5, 0.8, 0.8]; // +x,-x,+y,-y,+z,-z
@@ -73,28 +73,46 @@ export function applyBlockSkin(geo: THREE.BoxGeometry, baseUV: Float32Array, id:
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 }
 
-/** 0.25-scale world mesh for a dropped item. Caller positions/animates it. */
+// Geometry + material pairs shared by every drop mesh of the same item, so
+// spawning/removing drops never allocates or leaks GPU buffers. The key set is
+// bounded (~14 blocks + 4 materials + 24 tool/tier combos), so entries live for
+// the app's lifetime and are never disposed. Keyed on itemKey only: main.ts
+// passes the same atlas texture on every call, so block materials that close
+// over it stay valid (single-atlas assumption).
+const dropCache = new Map<string, { geo: THREE.BufferGeometry; mat: THREE.Material }>();
+
+/**
+ * 0.25-scale world mesh for a dropped item. Caller positions/animates it.
+ * Meshes share cached geometry/material per itemKey — callers must never
+ * dispose per-mesh; removing the mesh from the scene is all the cleanup needed
+ * (see DropManager.remove).
+ */
 export function buildDropMesh(item: Item, atlas: THREE.Texture): THREE.Mesh {
-  if (item.kind === 'block') {
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-    const baseUV = (geo.getAttribute('uv').array as Float32Array).slice();
-    applyBlockSkin(geo, baseUV, item.block);
-    const seeThrough = blockDef(item.block).layer !== RenderLayer.Opaque;
-    const mat = new THREE.MeshBasicMaterial({
-      map: atlas,
-      vertexColors: true,
-      transparent: seeThrough,
-      side: seeThrough ? THREE.DoubleSide : THREE.FrontSide,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.scale.setScalar(0.25);
-    return mesh;
+  const key = itemKey(item);
+  let entry = dropCache.get(key);
+  if (!entry) {
+    if (item.kind === 'block') {
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      const baseUV = (geo.getAttribute('uv').array as Float32Array).slice();
+      applyBlockSkin(geo, baseUV, item.block);
+      const seeThrough = blockDef(item.block).layer !== RenderLayer.Opaque;
+      const mat = new THREE.MeshBasicMaterial({
+        map: atlas,
+        vertexColors: true,
+        transparent: seeThrough,
+        side: seeThrough ? THREE.DoubleSide : THREE.FrontSide,
+      });
+      entry = { geo, mat };
+    } else {
+      const px = item.kind === 'tool' ? toolPixels(item.tool, item.tier) : materialPixels(item.material);
+      entry = {
+        geo: buildSpriteGeometry(px),
+        mat: new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
+      };
+    }
+    dropCache.set(key, entry);
   }
-  const px = item.kind === 'tool' ? toolPixels(item.tool, item.tier) : materialPixels(item.material);
-  const mesh = new THREE.Mesh(
-    buildSpriteGeometry(px),
-    new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
-  );
+  const mesh = new THREE.Mesh(entry.geo, entry.mat);
   mesh.scale.setScalar(0.25);
   return mesh;
 }

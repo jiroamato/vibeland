@@ -49,6 +49,10 @@ export class DropManager {
     private scene: THREE.Scene | null,
   ) {}
 
+  // Bound once so the three per-axis collision calls each frame don't allocate
+  // a fresh closure per entity (mirrors Player.solidCb).
+  private solidCb = (x: number, y: number, z: number) => this.world.solidAt(x, y, z);
+
   get count(): number {
     return this.entities.length;
   }
@@ -111,9 +115,9 @@ export class DropManager {
       e.vel.y -= GRAVITY * dt;
       if (e.vel.y < -40) e.vel.y = -40;
       const dy = e.vel.y * dt; // capture sign: collideAxis zeroes vel on hit
-      const onGround = collideAxis(this.world.solidAt.bind(this.world), e.pos, e.vel, BOX, 'y', dy) && dy < 0;
-      collideAxis(this.world.solidAt.bind(this.world), e.pos, e.vel, BOX, 'x', e.vel.x * dt);
-      collideAxis(this.world.solidAt.bind(this.world), e.pos, e.vel, BOX, 'z', e.vel.z * dt);
+      const onGround = collideAxis(this.solidCb, e.pos, e.vel, BOX, 'y', dy) && dy < 0;
+      collideAxis(this.solidCb, e.pos, e.vel, BOX, 'x', e.vel.x * dt);
+      collideAxis(this.solidCb, e.pos, e.vel, BOX, 'z', e.vel.z * dt);
       if (onGround) {
         e.vel.x *= Math.max(0, 1 - 10 * dt);
         e.vel.z *= Math.max(0, 1 - 10 * dt);

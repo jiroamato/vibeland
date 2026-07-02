@@ -103,13 +103,6 @@ export function maxStack(item: Item): number {
   return item.kind === 'tool' ? 1 : 64;
 }
 
-/**
- * Seconds to break a block while holding `item`, per the vanilla formula:
- *   time = hardness * (canHarvest ? 1.5 : 5) / speedMultiplier
- * speedMultiplier is the tier multiplier only when the held tool is the correct
- * type for the block (else 1). canHarvest requires no tool, or the correct tool
- * at a high-enough mining level. Returns Infinity for unbreakable blocks.
- */
 /** Can this break yield a drop / take the fast 1.5x path? (vanilla rule) */
 export function canHarvest(def: BlockDef, item: Item | null): boolean {
   let correct = false;
@@ -129,6 +122,13 @@ export function dropFor(def: BlockDef, held: Item | null): Item | null {
   return { kind: 'material', material: def.drop.material };
 }
 
+/**
+ * Seconds to break a block while holding `item`, per the vanilla formula:
+ *   time = hardness * (canHarvest ? 1.5 : 5) / speedMultiplier
+ * speedMultiplier is the tier multiplier only when the held tool is the correct
+ * type for the block (else 1). canHarvest requires no tool, or the correct tool
+ * at a high-enough mining level. Returns Infinity for unbreakable blocks.
+ */
 export function breakSeconds(def: BlockDef, item: Item | null): number {
   if (!Number.isFinite(def.hardness)) return Infinity;
   let speed = 1;
