@@ -35,6 +35,15 @@ describe('DropManager', () => {
     expect(dm.count).toBe(1);
     expect(dm.entities[0].stack.count).toBe(3);
   });
+  it('near-full stacks merge partially up to the stack limit', () => {
+    const dm = mk();
+    dm.spawn(dirt, 60, 0.5, 0.5, 0.5);
+    dm.spawn(dirt, 10, 0.5, 0.5, 0.5);
+    settle(dm);
+    expect(dm.count).toBe(2);
+    const counts = dm.entities.map((e) => e.stack.count).sort((a, b) => a - b);
+    expect(counts).toEqual([6, 64]);
+  });
   it('nearby player vacuums the drop into the inventory', () => {
     const dm = mk();
     const inv = new Inventory();

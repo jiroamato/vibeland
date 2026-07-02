@@ -34,14 +34,18 @@ interface ItemEntity {
   mesh: THREE.Object3D;
 }
 
-let seed = 9241;
-function rand(): number {
-  seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-  return seed / 4294967296;
-}
-
 export class DropManager {
   entities: ItemEntity[] = [];
+
+  // Instance-scoped LCG so every manager gets its own deterministic stream:
+  // trajectories no longer depend on how many other instances/tests have
+  // advanced a shared module-level sequence.
+  private seed = 9241;
+
+  private rand(): number {
+    this.seed = (Math.imul(this.seed, 1664525) + 1013904223) >>> 0;
+    return this.seed / 4294967296;
+  }
 
   constructor(
     private world: EntityWorld,
@@ -62,7 +66,7 @@ export class DropManager {
     const e: ItemEntity = {
       stack: { item, count },
       pos: new THREE.Vector3(x, y, z),
-      vel: new THREE.Vector3((rand() - 0.5) * 3, 5.5, (rand() - 0.5) * 3),
+      vel: new THREE.Vector3((this.rand() - 0.5) * 3, 5.5, (this.rand() - 0.5) * 3),
       age: 0,
       cooldown: 0,
       mesh,
@@ -139,10 +143,13 @@ export class DropManager {
       for (let j = this.entities.length - 1; j > i; j--) {
         const b = this.entities[j];
         if (itemKey(a.stack.item) !== itemKey(b.stack.item)) continue;
-        if (a.stack.count + b.stack.count > limit) continue;
         if (a.pos.distanceTo(b.pos) > MERGE) continue;
-        a.stack.count += b.stack.count;
-        this.remove(b);
+        // Partial transfer (mirrors Inventory.add): top up a, keep the rest in b.
+        const take = Math.min(limit - a.stack.count, b.stack.count);
+        if (take <= 0) continue; // a already full
+        a.stack.count += take;
+        b.stack.count -= take;
+        if (b.stack.count === 0) this.remove(b);
       }
     }
   }
