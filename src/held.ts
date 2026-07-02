@@ -3,7 +3,8 @@
 // scene/camera (cleared depth) so it never clips into the world. Blocks render
 // as a skinned cube; tools render as a 3D extrusion of their 16x16 sprite (each
 // opaque pixel becomes a thin voxel slab, like Minecraft's in-hand items).
-// Swings on click / while breaking.
+// Swings on click / while breaking: a forward chop around a wrist pivot at the
+// handle end, with a fast strike and slower recovery.
 // ---------------------------------------------------------------------------
 
 import * as THREE from 'three';
@@ -13,7 +14,7 @@ import { tileUV, toolPixels } from './textures';
 
 const SWING_DUR = 0.28;
 const FACE_SHADE = [0.6, 0.6, 1.0, 0.5, 0.8, 0.8]; // +x,-x,+y,-y,+z,-z
-const TOOL_DEPTH = 2 / 16; // sprite is 1 unit tall; ~2px of depth reads as solid
+const TOOL_DEPTH = 3 / 16; // sprite is 1 unit tall; ~3px of depth reads as a solid slab
 
 // Extrude a 16x16 RGBA sprite into a coloured mesh: front + back faces per
 // opaque pixel, side faces only on silhouette edges. Shading is baked into
@@ -41,8 +42,8 @@ function buildToolGeometry(px: Uint8ClampedArray): THREE.BufferGeometry {
       const yB = 0.5 - (y + 1) / 16;
       quad([x0, yB, zf], [x1, yB, zf], [x1, yT, zf], [x0, yT, zf], r * 0.95, g * 0.95, b * 0.95); // front
       quad([x1, yB, zb], [x0, yB, zb], [x0, yT, zb], [x1, yT, zb], r * 0.5, g * 0.5, b * 0.5); // back
-      if (!opaque(x - 1, y)) quad([x0, yB, zb], [x0, yB, zf], [x0, yT, zf], [x0, yT, zb], r * 0.65, g * 0.65, b * 0.65);
-      if (!opaque(x + 1, y)) quad([x1, yB, zf], [x1, yB, zb], [x1, yT, zb], [x1, yT, zf], r * 0.65, g * 0.65, b * 0.65);
+      if (!opaque(x - 1, y)) quad([x0, yB, zb], [x0, yB, zf], [x0, yT, zf], [x0, yT, zb], r * 0.55, g * 0.55, b * 0.55);
+      if (!opaque(x + 1, y)) quad([x1, yB, zf], [x1, yB, zb], [x1, yT, zb], [x1, yT, zf], r * 0.78, g * 0.78, b * 0.78);
       if (!opaque(x, y - 1)) quad([x0, yT, zf], [x1, yT, zf], [x1, yT, zb], [x0, yT, zb], r, g, b); // top edge brightest
       if (!opaque(x, y + 1)) quad([x0, yB, zb], [x1, yB, zb], [x1, yB, zf], [x0, yB, zf], r * 0.45, g * 0.45, b * 0.45); // bottom darkest
     }
@@ -61,6 +62,7 @@ export class HeldItem {
   private cubeMat: THREE.MeshBasicMaterial;
   private baseUV!: Float32Array; // pristine 0/1 box UVs to remap from
   private toolMesh: THREE.Mesh;
+  private toolPivot = new THREE.Group(); // wrist: sits at the handle end so swings arc forward
   private toolGeoCache = new Map<string, THREE.BufferGeometry>();
   private placeholderGeo: THREE.BufferGeometry | null = null; // disposed on first real tool geo
   private kind: 'block' | 'tool' = 'block';
@@ -89,8 +91,12 @@ export class HeldItem {
       new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
     );
     this.toolMesh.scale.setScalar(0.62);
-    this.toolMesh.visible = false;
-    this.scene.add(this.toolMesh);
+    // offset the mesh so the pivot origin lands on the handle end — sprites put
+    // the grip at pixel (2,13), i.e. (-0.375, -0.375) in mesh space
+    this.toolMesh.position.set(0.23, 0.23, 0);
+    this.toolPivot.add(this.toolMesh);
+    this.toolPivot.visible = false;
+    this.scene.add(this.toolPivot);
   }
 
   setItem(item: Item): void {
@@ -101,12 +107,12 @@ export class HeldItem {
     if (item.kind === 'block') {
       this.kind = 'block';
       this.cube.visible = true;
-      this.toolMesh.visible = false;
+      this.toolPivot.visible = false;
       this.skinBlock(item.block);
     } else {
       this.kind = 'tool';
       this.cube.visible = false;
-      this.toolMesh.visible = true;
+      this.toolPivot.visible = true;
       let geo = this.toolGeoCache.get(key);
       if (!geo) {
         geo = buildToolGeometry(toolPixels(item.tool, item.tier));
@@ -164,20 +170,19 @@ export class HeldItem {
       this.phase = 0.0001;
     }
 
-    const swing = Math.sin(this.phase * Math.PI); // 0..1..0
+    // Minecraft-style timing: the sqrt-eased strike snaps out fast and recovers
+    // slowly; sweep lags behind it so the arc reads as a whip, not a metronome.
+    const strike = Math.sin(Math.sqrt(this.phase) * Math.PI);
+    const sweep = Math.sin(this.phase * this.phase * Math.PI);
     if (this.kind === 'block') {
-      const baseX = 0.62;
-      const baseY = -0.52;
-      const baseZ = -1.0;
-      this.cube.position.set(baseX - swing * 0.12, baseY - swing * 0.22, baseZ + swing * 0.18);
-      this.cube.rotation.set(0.18 + swing * 0.5, -0.5 - swing * 0.6, 0.1);
+      // forward jab: away from the camera (-z), toward screen centre, top tipping away
+      this.cube.position.set(0.62 - strike * 0.25, -0.52 - strike * 0.16, -1.0 - strike * 0.28);
+      this.cube.rotation.set(0.18 - strike * 0.5, -0.5 - sweep * 0.5, 0.1);
     } else {
-      // angled so the extruded depth is visible; swing rotates it up
-      const baseX = 0.34;
-      const baseY = -0.34;
-      const baseZ = -0.92;
-      this.toolMesh.position.set(baseX - swing * 0.08, baseY - swing * 0.24, baseZ + swing * 0.1);
-      this.toolMesh.rotation.set(0.1 + swing * 0.35, -0.42, -0.12 - swing * 0.5);
+      // idle: yawed ~40° so the extruded depth is visible; swing pitches the
+      // pivot forward so the head arcs down-and-away like a real chop
+      this.toolPivot.position.set(0.26 - strike * 0.3, -0.64 - strike * 0.08, -1.0 - strike * 0.25);
+      this.toolPivot.rotation.set(0.1 - strike * 1.25, -0.7 - sweep * 0.45, -0.15 - sweep * 0.25);
     }
   }
 
