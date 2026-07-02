@@ -8,7 +8,7 @@
 // material tables are item concerns and live here.
 // ---------------------------------------------------------------------------
 
-import { BlockId, BlockDef, HOTBAR_BLOCKS, ToolType } from './blocks';
+import { BlockId, BlockDef, HOTBAR_BLOCKS, ToolType, Material } from './blocks';
 
 export const enum Tier {
   Wood = 0,
@@ -21,7 +21,8 @@ export const enum Tier {
 
 export type Item =
   | { kind: 'block'; block: BlockId }
-  | { kind: 'tool'; tool: ToolType; tier: Tier };
+  | { kind: 'tool'; tool: ToolType; tier: Tier }
+  | { kind: 'material'; material: Material };
 
 // Vanilla tool speed multipliers, indexed by Tier. Gold is fastest but its
 // mining level is the lowest — matching Minecraft.
@@ -63,8 +64,19 @@ const TIER_NAMES: Record<Tier, string> = {
   [Tier.Netherite]: 'Netherite',
 };
 
+const MATERIAL_NAMES: Record<Material, string> = {
+  [Material.Stick]: 'Stick',
+  [Material.Coal]: 'Coal',
+  [Material.RawIron]: 'Raw Iron',
+  [Material.Diamond]: 'Diamond',
+};
+
 export function toolDisplayName(t: ToolType, tier: Tier): string {
   return `${TIER_NAMES[tier]} ${TOOL_NAMES[t]}`;
+}
+
+export function materialDisplayName(m: Material): string {
+  return MATERIAL_NAMES[m];
 }
 
 export function block(id: BlockId): Item {
@@ -75,9 +87,20 @@ export function tool(t: ToolType, tier: Tier): Item {
   return { kind: 'tool', tool: t, tier };
 }
 
+export function material(m: Material): Item {
+  return { kind: 'material', material: m };
+}
+
 /** Stable string id for an item — used for hotbar diffing and texture caches. */
 export function itemKey(item: Item): string {
-  return item.kind === 'block' ? `b:${item.block}` : `t:${item.tool}:${item.tier}`;
+  if (item.kind === 'block') return 'b:' + item.block;
+  if (item.kind === 'tool') return 't:' + item.tool + ':' + item.tier;
+  return 'm:' + item.material;
+}
+
+/** Stack limit per item: tools are unstackable, everything else stacks to 64. */
+export function maxStack(item: Item): number {
+  return item.kind === 'tool' ? 1 : 64;
 }
 
 /**

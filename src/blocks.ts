@@ -38,6 +38,16 @@ export const enum ToolType {
   Hoe = 3,
 }
 
+// Raw material items dropped by blocks (sticks, coal, raw iron…). Lives here
+// (not items.ts) for the same reason as ToolType: block drop specs reference
+// it without a circular import.
+export const enum Material {
+  Stick = 0,
+  Coal = 1,
+  RawIron = 2,
+  Diamond = 3,
+}
+
 // Atlas tile indices. Order here defines the order tiles are generated/loaded.
 export const Tiles = {
   stone: 0,

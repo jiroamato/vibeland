@@ -654,7 +654,12 @@ export function makeToolIcon(toolType: ToolType, tier: Tier, size = 64): HTMLCan
 
 /** Icon for any hotbar/picker item: block iso-icon or flat tool sprite. */
 export function makeItemIcon(item: Item, tiles: HTMLCanvasElement[], size = 64): HTMLCanvasElement {
-  return item.kind === 'block'
-    ? makeBlockIcon(item.block, tiles, size)
-    : makeToolIcon(item.tool, item.tier, size);
+  if (item.kind === 'block') {
+    return makeBlockIcon(item.block, tiles, size);
+  } else if (item.kind === 'tool') {
+    return makeToolIcon(item.tool, item.tier, size);
+  } else {
+    // material: render as AIR block placeholder for now
+    return makeBlockIcon(0, tiles, size);
+  }
 }

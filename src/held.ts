@@ -109,7 +109,7 @@ export class HeldItem {
       this.cube.visible = true;
       this.toolPivot.visible = false;
       this.skinBlock(item.block);
-    } else {
+    } else if (item.kind === 'tool') {
       this.kind = 'tool';
       this.cube.visible = false;
       this.toolPivot.visible = true;
@@ -123,6 +123,12 @@ export class HeldItem {
         this.placeholderGeo.dispose();
         this.placeholderGeo = null;
       }
+    } else {
+      // material: render like a block (hidden for now, future: placeholder item model)
+      this.kind = 'block';
+      this.cube.visible = true;
+      this.toolPivot.visible = false;
+      this.skinBlock(0); // AIR block as placeholder
     }
   }
 
