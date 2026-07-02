@@ -1,3 +1,8 @@
+// Regression tests for the item helpers (src/items.ts). These pin item identity
+// keys (itemKey), stack limits (maxStack), and material display names so the
+// inventory/crafting foundation can't silently drift. All pure logic with no
+// DOM/Three.js dependency, so these run in plain node.
+
 import { describe, it, expect } from 'vitest';
 import { Material, Blocks, ToolType } from '../src/blocks';
 import { block, tool, material, itemKey, maxStack, materialDisplayName, Tier } from '../src/items';
