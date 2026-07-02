@@ -18,6 +18,7 @@ export interface DebugInfo {
   chunks: number;
   flying: boolean;
   onGround: boolean;
+  mode: string;
 }
 
 export class UI {
@@ -115,6 +116,6 @@ export class UI {
       `Chunk: ${d.chunkX}, ${d.chunkZ}\n` +
       `Facing: ${d.facing}\n` +
       `Chunks loaded: ${d.chunks}\n` +
-      `Mode: ${d.flying ? 'fly' : 'survive'}${d.onGround ? ' (grounded)' : ''}`;
+      `Mode: ${d.mode}${d.flying ? ' (fly)' : ''}${d.onGround ? ' (grounded)' : ''}`;
   }
 }

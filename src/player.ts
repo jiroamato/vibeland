@@ -42,6 +42,8 @@ export class Player {
   pitch = 0;
 
   flying = false;
+  /** Whether the fly toggle is available (creative). Survival locks it off. */
+  allowFly = true;
   onGround = false;
   sprinting = false;
   sneaking = false;
@@ -106,7 +108,7 @@ export class Player {
     this.pitch = Math.max(-lim, Math.min(lim, this.pitch));
 
     // --- toggles ---
-    if (input.wasPressed('KeyF') || input.consumeDoubleTap('Space')) {
+    if (this.allowFly && (input.wasPressed('KeyF') || input.consumeDoubleTap('Space'))) {
       this.flying = !this.flying;
       this.vel.y = 0;
     }
