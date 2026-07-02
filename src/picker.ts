@@ -4,14 +4,18 @@
 // slot live. Opening/closing and pointer-lock are coordinated by main.ts.
 // ---------------------------------------------------------------------------
 
-import { Item, allItems, toolDisplayName } from './items';
+import { Item, allItems, toolDisplayName, materialDisplayName } from './items';
 import { blockDef } from './blocks';
 import { makeItemIcon } from './textures';
 
 function itemLabel(item: Item): string {
-  return item.kind === 'block'
-    ? blockDef(item.block).name.replace(/_/g, ' ')
-    : toolDisplayName(item.tool, item.tier);
+  if (item.kind === 'block') {
+    return blockDef(item.block).name.replace(/_/g, ' ');
+  } else if (item.kind === 'tool') {
+    return toolDisplayName(item.tool, item.tier);
+  } else {
+    return materialDisplayName(item.material);
+  }
 }
 
 export class Picker {

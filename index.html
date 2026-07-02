@@ -52,6 +52,11 @@
         position: absolute; top: 1px; left: 3px;
         font-size: 11px; color: #fff; text-shadow: 1px 1px 0 #3f3f3f;
       }
+      .slot .count {
+        position: absolute; right: 2px; bottom: 0;
+        font-size: 14px; font-weight: 700; color: #fff;
+        text-shadow: 1px 1px 0 #3f3f3f;
+      }
 
       /* Always-on FPS counter (top-left). Hidden while the F3 overlay is up,
          since that overlay already reports FPS. */
@@ -90,6 +95,9 @@
         pointer-events: auto;
       }
       #overlay .play:hover { background: #79c043; }
+      #overlay .play.creative { background: #3a76ab; text-shadow: 1px 1px 0 #1d3c58; }
+      #overlay .play.creative:hover { background: #4a8cc7; }
+      #overlay .play.hidden { display: none; }
       #overlay .controls { margin-top: 22px; font-size: 13px; opacity: 0.85; }
       #overlay .pack { margin-top: 14px; font-size: 13px; pointer-events: auto; }
       #overlay .pack input { display: none; }
@@ -148,10 +156,11 @@
     <div id="overlay" class="hidden">
       <h1>VIBELAND</h1>
       <p>A from-scratch Minecraft-style voxel game.</p>
-      <button class="play" id="play">Click to Play</button>
+      <button class="play" id="playSurvival">Play Survival</button>
+      <button class="play creative" id="playCreative">Play Creative</button>
       <div class="controls">
         WASD move · Space jump · Shift sneak · Ctrl / double-tap W sprint · F fly<br />
-        Left-click break · Right-click place · 1–9 / scroll select · E items · F3 debug · Esc release mouse
+        Left-click break · Right-click place · 1–9 / scroll select · E items (creative) · F3 debug · Esc release mouse
       </div>
       <div class="pack">
         <input type="file" id="packInput" webkitdirectory directory multiple />

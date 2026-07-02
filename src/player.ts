@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import type { World } from './world';
 import { Input } from './input';
 import { blockDef } from './blocks';
+import { collideAxis, type Box } from './collision';
 
 const WIDTH = 0.6;
 const HALF = WIDTH / 2;
@@ -41,12 +42,16 @@ export class Player {
   pitch = 0;
 
   flying = false;
+  /** Whether the fly toggle is available (creative). Survival locks it off. */
+  allowFly = true;
   onGround = false;
   sprinting = false;
   sneaking = false;
 
   private world: World;
   private targetFov = FOV_BASE;
+  private box: Box = { half: HALF, height: HEIGHT };
+  private solidCb = (x: number, y: number, z: number) => this.solidAt(x, y, z);
 
   constructor(world: World, aspect: number) {
     this.world = world;
@@ -87,50 +92,12 @@ export class Player {
     return false;
   }
 
-  // Move one axis then resolve against the overlapping solids, snapping to the
-  // nearest blocking face IN THE DIRECTION OF TRAVEL. Blocks behind the
-  // pre-move leading edge are ignored, so a graze/penetration on the far side
-  // can never snap the player backwards (axis-separated corner-catch). Other
-  // axes are assumed already resolved (clear).
-  private collideAxis(axis: 'x' | 'y' | 'z', amount: number): void {
-    if (amount === 0) return;
-    const before = this.pos[axis];
-    this.pos[axis] += amount;
-
-    // AABB extents on this axis: feet..head for y, +/-HALF for x/z.
-    const lowExt = axis === 'y' ? 0 : HALF;
-    const highExt = axis === 'y' ? HEIGHT : HALF;
-    const lead = amount > 0 ? before + highExt : before - lowExt;
-
-    const x0 = Math.floor(this.pos.x - HALF),
-      x1 = Math.floor(this.pos.x + HALF - 1e-9);
-    const y0 = Math.floor(this.pos.y),
-      y1 = Math.floor(this.pos.y + HEIGHT - 1e-9);
-    const z0 = Math.floor(this.pos.z - HALF),
-      z1 = Math.floor(this.pos.z + HALF - 1e-9);
-
-    let hit = false;
-    let bound = 0; // chosen block coordinate on the moving axis
-    for (let bx = x0; bx <= x1; bx++)
-      for (let by = y0; by <= y1; by++)
-        for (let bz = z0; bz <= z1; bz++) {
-          if (!this.solidAt(bx + 0.5, by + 0.5, bz + 0.5)) continue;
-          const coord = axis === 'x' ? bx : axis === 'y' ? by : bz;
-          // keep only blocks ahead of the pre-move leading edge
-          if (amount > 0 ? coord < lead - EPS : coord + 1 > lead + EPS) continue;
-          if (!hit) {
-            hit = true;
-            bound = coord;
-          } else {
-            bound = amount > 0 ? Math.min(bound, coord) : Math.max(bound, coord);
-          }
-        }
-    if (!hit) return;
-
-    this.pos[axis] = amount > 0 ? bound - highExt - EPS : bound + 1 + lowExt + EPS;
-    this.vel[axis] = 0;
-    if (axis === 'y' && amount < 0) this.onGround = true;
-  }
+  // Axis resolution lives in collision.ts (shared swept-AABB): move one axis
+  // then resolve against the overlapping solids, snapping to the nearest
+  // blocking face IN THE DIRECTION OF TRAVEL. Blocks behind the pre-move
+  // leading edge are ignored, so a graze/penetration on the far side can never
+  // snap the player backwards (axis-separated corner-catch). Other axes are
+  // assumed already resolved (clear).
 
   update(dt: number, input: Input): void {
     // --- look ---
@@ -141,7 +108,7 @@ export class Player {
     this.pitch = Math.max(-lim, Math.min(lim, this.pitch));
 
     // --- toggles ---
-    if (input.wasPressed('KeyF') || input.consumeDoubleTap('Space')) {
+    if (this.allowFly && (input.wasPressed('KeyF') || input.consumeDoubleTap('Space'))) {
       this.flying = !this.flying;
       this.vel.y = 0;
     }
@@ -217,18 +184,18 @@ export class Player {
     const sneakProtect = this.sneaking && !this.flying;
 
     for (let s = 0; s < steps; s++) {
-      this.collideAxis('y', syMove);
+      if (collideAxis(this.solidCb, this.pos, this.vel, this.box, 'y', syMove) && syMove < 0) this.onGround = true;
 
       // sneak edge protection: undo a horizontal step that walks off a ledge
       const beforeX = this.pos.x;
-      this.collideAxis('x', sxMove);
+      collideAxis(this.solidCb, this.pos, this.vel, this.box, 'x', sxMove);
       if (sneakProtect && this.onGround && !this.supported(this.pos.x, this.pos.z)) {
         this.pos.x = beforeX;
         this.vel.x = 0;
       }
 
       const beforeZ = this.pos.z;
-      this.collideAxis('z', szMove);
+      collideAxis(this.solidCb, this.pos, this.vel, this.box, 'z', szMove);
       if (sneakProtect && this.onGround && !this.supported(this.pos.x, this.pos.z)) {
         this.pos.z = beforeZ;
         this.vel.z = 0;

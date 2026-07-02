@@ -9,9 +9,19 @@ import type { World } from './world';
 import { Player } from './player';
 import { Input } from './input';
 import { Blocks, blockDef } from './blocks';
-import { Item, breakSeconds, itemKey } from './items';
+import { Item, breakSeconds, itemKey, dropFor } from './items';
+import type { DropManager } from './itemEntity';
+import type { Inventory } from './inventory';
 
 const REACH = 4.5;
+
+/** Survival-mode hooks: spawn drops on break, consume inventory on place. */
+export interface SurvivalCtx {
+  drops: DropManager;
+  inventory: Inventory;
+  selectedSlot: number;
+  onChange: () => void; // main re-syncs hotbar UI + held item
+}
 
 export interface RayHit {
   x: number;
@@ -168,7 +178,14 @@ export class Interaction {
   }
 
   /** Returns true if the player swung (broke or placed) this frame. */
-  update(dt: number, input: Input, player: Player, world: World, selected: Item): boolean {
+  update(
+    dt: number,
+    input: Input,
+    player: Player,
+    world: World,
+    selected: Item | null,
+    survival: SurvivalCtx | null,
+  ): boolean {
     const origin = player.eyePosition;
     const dir = player.getLookDir();
     const hit = raycast(world, origin, dir);
@@ -192,7 +209,7 @@ export class Interaction {
     // Key on the held item too, so switching tools mid-break resets progress
     // (vanilla behaviour) instead of letting time banked with a slow tool
     // instantly complete the break once a faster tool is selected.
-    const key = hit.x + ',' + hit.y + ',' + hit.z + '|' + itemKey(selected);
+    const key = hit.x + ',' + hit.y + ',' + hit.z + '|' + (selected ? itemKey(selected) : 'hand');
     const id = world.getBlock(hit.x, hit.y, hit.z);
     const def = blockDef(id);
     // Break time depends on the held item: correct tool + tier mine far faster.
@@ -213,6 +230,10 @@ export class Interaction {
       if (input.leftJustPressed) swung = true;
       if (this.breakProgress >= 1) {
         world.setBlock(hit.x, hit.y, hit.z, Blocks.AIR);
+        if (survival) {
+          const drop = dropFor(def, selected);
+          if (drop) survival.drops.spawn(drop, 1, hit.x + 0.5, hit.y + 0.6, hit.z + 0.5);
+        }
         this.breakingKey = null;
         this.breakAccum = 0;
         this.breakProgress = 0;
@@ -231,7 +252,7 @@ export class Interaction {
 
     // --- placing (right-click) --- only blocks place; tools just swing.
     if (input.rightJustPressed) {
-      if (selected.kind === 'block') {
+      if (selected && selected.kind === 'block') {
         const px = hit.x + hit.nx;
         const py = hit.y + hit.ny;
         const pz = hit.z + hit.nz;
@@ -240,6 +261,10 @@ export class Interaction {
         const replaceable = targetId === Blocks.AIR || targetDef.liquid;
         if (replaceable && !(blockDef(selected.block).solid && this.intersectsPlayer(px, py, pz, player))) {
           world.setBlock(px, py, pz, selected.block);
+          if (survival) {
+            survival.inventory.consume(survival.selectedSlot);
+            survival.onChange();
+          }
         }
       }
       swung = true;

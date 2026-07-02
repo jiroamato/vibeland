@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import * as THREE from 'three';
-import { TILE_COUNT, ToolType } from './blocks';
+import { TILE_COUNT, ToolType, Material } from './blocks';
 import { blockDef, BlockId } from './blocks';
 import { Tier, Item, TOOL_TYPES, TIERS } from './items';
 
@@ -528,6 +528,55 @@ function genToolSprite(toolType: ToolType, tier: Tier): Tile {
   return t;
 }
 
+// --- material sprites (stick, coal, raw iron, diamond) ----------------------
+const MAT_PAL: Record<Material, Palette> = {
+  [Material.Stick]: HANDLE_PAL,
+  [Material.Coal]: { outline: [24, 24, 28, 255], base: [52, 52, 58, 255], light: [86, 86, 94, 255], dark: [38, 38, 44, 255] },
+  [Material.RawIron]: { outline: [140, 100, 78, 255], base: [216, 176, 148, 255], light: [240, 208, 184, 255], dark: [178, 138, 112, 255] },
+  [Material.Diamond]: TIER_PAL[Tier.Diamond],
+};
+
+// Silhouettes: stick = 2px diagonal; the rest are shaded lumps/gem.
+const MAT_MASK: Record<Material, [number, number][]> = {
+  [Material.Stick]: (() => {
+    const p: [number, number][] = [];
+    for (let s = 0; s <= 8; s++) p.push([3 + s, 12 - s], [4 + s, 12 - s]);
+    return p;
+  })(),
+  [Material.Coal]: rangesToPts([[5, 6, 10], [6, 5, 11], [7, 4, 11], [8, 4, 11], [9, 5, 10], [10, 6, 9]]),
+  [Material.RawIron]: rangesToPts([[4, 6, 9], [5, 5, 11], [6, 4, 11], [7, 4, 12], [8, 5, 11], [9, 5, 10], [10, 7, 9]]),
+  [Material.Diamond]: rangesToPts([[4, 6, 9], [5, 5, 10], [6, 4, 11], [7, 5, 10], [8, 6, 9], [9, 7, 8]]),
+};
+
+const matCanvasCache = new Map<Material, HTMLCanvasElement>();
+
+function materialSpriteCanvas(m: Material): HTMLCanvasElement {
+  let cv = matCanvasCache.get(m);
+  if (!cv) {
+    const t = new Tile();
+    drawShadedMask(t, MAT_MASK[m], MAT_PAL[m]);
+    cv = t.toCanvas();
+    matCanvasCache.set(m, cv);
+  }
+  return cv;
+}
+
+/** 16x16 RGBA pixels for a material sprite (3D drop/held extrusion). */
+export function materialPixels(m: Material): Uint8ClampedArray {
+  return materialSpriteCanvas(m).getContext('2d')!.getImageData(0, 0, TILE_RES, TILE_RES).data;
+}
+
+/** Upscaled flat material icon for the hotbar. */
+export function makeMaterialIcon(m: Material, size = 64): HTMLCanvasElement {
+  const cv = document.createElement('canvas');
+  cv.width = size;
+  cv.height = size;
+  const ctx = cv.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(materialSpriteCanvas(m), 0, 0, TILE_RES, TILE_RES, 0, 0, size, size);
+  return cv;
+}
+
 // Cache key shared by every tool-sprite cache.
 const toolCacheKey = (toolType: ToolType, tier: Tier) => toolType + ':' + tier;
 
@@ -652,9 +701,9 @@ export function makeToolIcon(toolType: ToolType, tier: Tier, size = 64): HTMLCan
   return cv;
 }
 
-/** Icon for any hotbar/picker item: block iso-icon or flat tool sprite. */
+/** Icon for any hotbar/picker item: block iso-icon or flat tool/material sprite. */
 export function makeItemIcon(item: Item, tiles: HTMLCanvasElement[], size = 64): HTMLCanvasElement {
-  return item.kind === 'block'
-    ? makeBlockIcon(item.block, tiles, size)
-    : makeToolIcon(item.tool, item.tier, size);
+  if (item.kind === 'block') return makeBlockIcon(item.block, tiles, size);
+  if (item.kind === 'tool') return makeToolIcon(item.tool, item.tier, size);
+  return makeMaterialIcon(item.material, size);
 }

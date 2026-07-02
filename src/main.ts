@@ -17,6 +17,11 @@ import { makeChunkMaterials } from './chunkMaterial';
 import { generateDefaultTiles, buildAtlas, paintAtlas, loadToolTextures } from './textures';
 import { loadResourcePack } from './resourcepack';
 import { CHUNK_SX, CHUNK_SZ, floorDiv } from './constants';
+import { GameMode, GameRules, rulesFor } from './gamemode';
+import { Inventory, HOTBAR_SIZE } from './inventory';
+import { DropManager, EntityWorld } from './itemEntity';
+import { buildDropMesh } from './itemMesh';
+import { blockDef } from './blocks';
 
 // --- renderer / scene ---
 const app = document.getElementById('app')!;
@@ -45,6 +50,19 @@ const interaction = new Interaction(scene);
 const input = new Input(renderer.domElement);
 const chunks = new ChunkManager(world, scene, materials);
 
+// --- item drops (survival) ---
+const entityWorld: EntityWorld = {
+  solidAt: (x, y, z) => blockDef(world.getBlock(Math.floor(x), Math.floor(y), Math.floor(z))).solid,
+  chunkLoaded: (wx, wz) => world.getChunk(floorDiv(Math.floor(wx), CHUNK_SX), floorDiv(Math.floor(wz), CHUNK_SZ)) !== undefined,
+};
+const drops = new DropManager(entityWorld, (item) => buildDropMesh(item, atlasTexture), scene);
+
+function syncHotbar() {
+  if (!inventory) return;
+  ui.setStacks(inventory.slots.slice(0, HOTBAR_SIZE));
+  held.setItem(ui.selectedItem);
+}
+
 ui.buildHotbar(tiles);
 const picker = new Picker(tiles);
 held.setItem(ui.selectedItem);
@@ -69,11 +87,37 @@ loadToolTextures().then((ok) => {
 // spawn the player above the surface near origin
 player.spawn(0, 0);
 
-// --- overlay / pointer lock ---
+// --- game mode / overlay / pointer lock ---
+let mode: GameMode | null = null; // chosen on first Play click, then fixed
+let rules: GameRules = rulesFor('creative');
+let inventory: Inventory | null = null;
+
 const overlayEl = document.getElementById('overlay')!;
 const loadingEl = document.getElementById('loading')!;
-const playBtn = document.getElementById('play')!;
-playBtn.addEventListener('click', () => input.requestLock());
+const survivalBtn = document.getElementById('playSurvival')!;
+const creativeBtn = document.getElementById('playCreative')!;
+
+function choose(m: GameMode) {
+  if (mode === null) {
+    mode = m;
+    rules = rulesFor(m);
+    player.allowFly = rules.fly;
+    if (m === 'survival') {
+      inventory = new Inventory();
+      ui.showCounts = true;
+      ui.setStacks(new Array(HOTBAR_SIZE).fill(null));
+      held.setItem(ui.selectedItem);
+      survivalBtn.textContent = 'Resume';
+      creativeBtn.classList.add('hidden');
+    } else {
+      creativeBtn.textContent = 'Resume';
+      survivalBtn.classList.add('hidden');
+    }
+  }
+  input.requestLock();
+}
+survivalBtn.addEventListener('click', () => choose('survival'));
+creativeBtn.addEventListener('click', () => choose('creative'));
 input.onLockChange = (locked) => {
   // While the picker is open the pointer is intentionally released; keep the
   // start overlay hidden so it doesn't pop up behind the picker.
@@ -93,7 +137,7 @@ input.onLockError = () => {
 
 // --- creative item picker (E) ---
 function openPicker() {
-  if (!started || picker.open || !input.locked) return;
+  if (!rules.picker || !started || picker.open || !input.locked) return;
   picker.show(ui.selected); // releases the pointer; onLockChange keeps overlay hidden
   document.exitPointerLock();
 }
@@ -191,7 +235,9 @@ function frame(now: number) {
   let swung = false;
   if (started && input.locked) {
     player.update(dt, input);
-    swung = interaction.update(dt, input, player, world, ui.selectedItem);
+    const survival = inventory ? { drops, inventory, selectedSlot: ui.selected, onChange: syncHotbar } : null;
+    swung = interaction.update(dt, input, player, world, ui.selectedItem, survival);
+    drops.update(dt, player.pos, inventory, syncHotbar);
   } else {
     // keep camera oriented even while paused
     player.camera.rotation.y = player.yaw;
@@ -218,6 +264,7 @@ function frame(now: number) {
       chunks: chunks.meshedCount,
       flying: player.flying,
       onGround: player.onGround,
+      mode: mode ?? 'menu',
     });
   }
 
@@ -228,4 +275,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle (handy in the console: e.g. __game.player.pos, __game.sky.time).
-(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held };
+(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held, drops, mode: () => mode, inventory: () => inventory };
