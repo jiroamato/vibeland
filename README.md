@@ -13,8 +13,11 @@ npm install
 npm run dev      # open the printed http://localhost:5173 URL
 ```
 
-Click **Play** to lock the mouse. `npm run build` type-checks and produces a production
-build in `dist/`.
+The start screen offers **Play Survival** and **Play Creative** (either locks the mouse).
+Creative is the original sandbox: fly, infinite blocks, item picker. Survival starts with
+an empty hotbar — mine bare-handed and blocks pop out as Minecraft-style item drops that
+vacuum into a stacking 36-slot inventory; placing consumes items. `npm run build`
+type-checks and produces a production build in `dist/`.
 
 ## Controls
 
@@ -25,10 +28,11 @@ build in `dist/`.
 | Space | Jump (hold to fly up in fly mode) |
 | Shift | Sneak (won't walk off edges) / fly down |
 | Ctrl or double-tap W | Sprint |
-| F or double-tap Space | Toggle fly (Creative-style) |
+| F or double-tap Space | Toggle fly (creative only) |
 | Left-click (hold) | Break block (crack animation, per-block time) |
 | Right-click | Place selected block |
 | 1–9 / scroll | Select hotbar slot |
+| E | Item picker (creative only) |
 | F3 | Debug overlay (FPS, XYZ, facing, chunk) |
 | Esc | Release mouse |
 
@@ -55,14 +59,19 @@ resolution (16×16) packs match 1:1; higher-resolution packs are downsampled to 
 | `mesher.ts` | Face-culled meshing with per-face shading + ambient occlusion |
 | `chunkMaterial.ts` | Texture × baked-shade × skylight × day/night shader |
 | `chunkManager.ts` | Generate→light→mesh→unload streaming on a frame budget |
+| `collision.ts` | Shared swept-AABB voxel collision (player + item entities) |
 | `player.ts` | Camera, movement, AABB voxel collision (Minecraft numbers) |
 | `input.ts` | Pointer lock, keys, mouse, scroll, double-tap |
+| `gamemode.ts` | Survival/creative mode rules consulted by input, picker and interaction |
+| `inventory.ts` | 36-slot ItemStack inventory (hotbar = slots 0–8), stack/merge/consume rules |
 | `interaction.ts` | Voxel raycast, hold-to-break + crack, placement, outline |
+| `itemMesh.ts` | Mesh builders for items: skinned block cubes + 16×16 sprite extrusions |
+| `itemEntity.ts` | Item-drop entities: pop physics, merging, vacuum pickup, despawn |
 | `sky.ts` | Sky color, fog, sun/moon, clouds, 20-minute day/night |
-| `held.ts` | First-person held block (overlay scene) + swing |
-| `ui.ts` | Hotbar + F3 debug overlay |
+| `held.ts` | First-person held block (overlay scene) + swing; tools/materials render as sprite extrusions |
+| `ui.ts` | Hotbar with stack count badges + F3 debug overlay |
 | `main.ts` | Wires everything together and runs the frame loop |
 
 ## Out of scope
 
-Multiplayer, mobs, crafting/inventory, redstone, hunger/health, sounds, world saving.
+Multiplayer, mobs, redstone, hunger, sounds, world saving (planned), furnace/smelting (planned), swimming — and crafting is the next slice, so it's off this list.
