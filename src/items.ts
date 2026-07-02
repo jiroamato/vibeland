@@ -121,6 +121,14 @@ export function canHarvest(def: BlockDef, item: Item | null): boolean {
   return !def.requiresTool || (correct && level >= def.tierNeeded);
 }
 
+/** Resolve a block's drop for the held item, or null (wrong tool / no drop). */
+export function dropFor(def: BlockDef, held: Item | null): Item | null {
+  if (!def.drop || !canHarvest(def, held)) return null;
+  if (def.drop.kind === 'self') return { kind: 'block', block: def.id };
+  if (def.drop.kind === 'block') return { kind: 'block', block: def.drop.block };
+  return { kind: 'material', material: def.drop.material };
+}
+
 export function breakSeconds(def: BlockDef, item: Item | null): number {
   if (!Number.isFinite(def.hardness)) return Infinity;
   let speed = 1;

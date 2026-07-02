@@ -89,6 +89,13 @@ export const TILE_NAMES: string[] = [
   'bedrock',
 ];
 
+/** What a block yields when broken with a satisfying tool (see items.dropFor). */
+export type DropSpec =
+  | { kind: 'self' }
+  | { kind: 'block'; block: BlockId }
+  | { kind: 'material'; material: Material }
+  | null;
+
 export interface BlockDef {
   id: BlockId;
   name: string;
@@ -121,6 +128,8 @@ export interface BlockDef {
   tierNeeded: number;
   /** Liquids: no collision, special placement/culling. */
   liquid: boolean;
+  /** Drop yielded on harvest; null = never drops. */
+  drop: DropSpec;
 }
 
 function allFaces(t: number): [number, number, number, number, number, number] {
@@ -139,25 +148,27 @@ function def(d: BlockDef) {
 // hardness/tool/requiresTool/tierNeeded drive the vanilla break-time formula in
 // interaction.ts. Hand times for non-tool blocks match the old breakTime values
 // (hardness * 1.5); tool-required blocks now use vanilla hand times (hardness * 5).
+const SELF: DropSpec = { kind: 'self' };
+
 const P = ToolType.Pickaxe;
 const A = ToolType.Axe;
 const S = ToolType.Shovel;
 const H = ToolType.Hoe;
 
-def({ id: Blocks.AIR, name: 'air', faces: allFaces(0), opaque: false, solid: false, layer: RenderLayer.Opaque, selfCull: false, hardness: 0, tool: null, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.STONE, name: 'stone', faces: allFaces(T.stone), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 1.5, tool: P, requiresTool: true, tierNeeded: 0, liquid: false });
-def({ id: Blocks.GRASS, name: 'grass_block', faces: [T.grass_side, T.grass_side, T.grass_top, T.dirt, T.grass_side, T.grass_side], opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 0.6, tool: S, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.DIRT, name: 'dirt', faces: allFaces(T.dirt), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 0.5, tool: S, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.COBBLESTONE, name: 'cobblestone', faces: allFaces(T.cobblestone), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.0, tool: P, requiresTool: true, tierNeeded: 0, liquid: false });
-def({ id: Blocks.SAND, name: 'sand', faces: allFaces(T.sand), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 0.5, tool: S, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.OAK_LOG, name: 'oak_log', faces: [T.oak_log, T.oak_log, T.oak_log_top, T.oak_log_top, T.oak_log, T.oak_log], opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.0, tool: A, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.OAK_PLANKS, name: 'oak_planks', faces: allFaces(T.oak_planks), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.0, tool: A, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.OAK_LEAVES, name: 'oak_leaves', faces: allFaces(T.oak_leaves), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: true, hardness: 0.2, tool: H, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.GLASS, name: 'glass', faces: allFaces(T.glass), opaque: false, solid: true, layer: RenderLayer.Cutout, selfCull: true, hardness: 0.3, tool: null, requiresTool: false, tierNeeded: 0, liquid: false });
-def({ id: Blocks.WATER, name: 'water', faces: allFaces(T.water), opaque: false, solid: false, layer: RenderLayer.Translucent, selfCull: true, hardness: Infinity, tool: null, requiresTool: false, tierNeeded: 0, liquid: true });
-def({ id: Blocks.COAL_ORE, name: 'coal_ore', faces: allFaces(T.coal_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 0, liquid: false });
-def({ id: Blocks.IRON_ORE, name: 'iron_ore', faces: allFaces(T.iron_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 1, liquid: false });
-def({ id: Blocks.BEDROCK, name: 'bedrock', faces: allFaces(T.bedrock), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: Infinity, tool: null, requiresTool: false, tierNeeded: 0, liquid: false });
+def({ id: Blocks.AIR, name: 'air', faces: allFaces(0), opaque: false, solid: false, layer: RenderLayer.Opaque, selfCull: false, hardness: 0, tool: null, requiresTool: false, tierNeeded: 0, liquid: false, drop: null });
+def({ id: Blocks.STONE, name: 'stone', faces: allFaces(T.stone), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 1.5, tool: P, requiresTool: true, tierNeeded: 0, liquid: false, drop: { kind: 'block', block: Blocks.COBBLESTONE } });
+def({ id: Blocks.GRASS, name: 'grass_block', faces: [T.grass_side, T.grass_side, T.grass_top, T.dirt, T.grass_side, T.grass_side], opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 0.6, tool: S, requiresTool: false, tierNeeded: 0, liquid: false, drop: { kind: 'block', block: Blocks.DIRT } });
+def({ id: Blocks.DIRT, name: 'dirt', faces: allFaces(T.dirt), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 0.5, tool: S, requiresTool: false, tierNeeded: 0, liquid: false, drop: SELF });
+def({ id: Blocks.COBBLESTONE, name: 'cobblestone', faces: allFaces(T.cobblestone), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.0, tool: P, requiresTool: true, tierNeeded: 0, liquid: false, drop: SELF });
+def({ id: Blocks.SAND, name: 'sand', faces: allFaces(T.sand), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 0.5, tool: S, requiresTool: false, tierNeeded: 0, liquid: false, drop: SELF });
+def({ id: Blocks.OAK_LOG, name: 'oak_log', faces: [T.oak_log, T.oak_log, T.oak_log_top, T.oak_log_top, T.oak_log, T.oak_log], opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.0, tool: A, requiresTool: false, tierNeeded: 0, liquid: false, drop: SELF });
+def({ id: Blocks.OAK_PLANKS, name: 'oak_planks', faces: allFaces(T.oak_planks), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.0, tool: A, requiresTool: false, tierNeeded: 0, liquid: false, drop: SELF });
+def({ id: Blocks.OAK_LEAVES, name: 'oak_leaves', faces: allFaces(T.oak_leaves), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: true, hardness: 0.2, tool: H, requiresTool: false, tierNeeded: 0, liquid: false, drop: null });
+def({ id: Blocks.GLASS, name: 'glass', faces: allFaces(T.glass), opaque: false, solid: true, layer: RenderLayer.Cutout, selfCull: true, hardness: 0.3, tool: null, requiresTool: false, tierNeeded: 0, liquid: false, drop: null });
+def({ id: Blocks.WATER, name: 'water', faces: allFaces(T.water), opaque: false, solid: false, layer: RenderLayer.Translucent, selfCull: true, hardness: Infinity, tool: null, requiresTool: false, tierNeeded: 0, liquid: true, drop: null });
+def({ id: Blocks.COAL_ORE, name: 'coal_ore', faces: allFaces(T.coal_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 0, liquid: false, drop: { kind: 'material', material: Material.Coal } });
+def({ id: Blocks.IRON_ORE, name: 'iron_ore', faces: allFaces(T.iron_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 1, liquid: false, drop: { kind: 'material', material: Material.RawIron } });
+def({ id: Blocks.BEDROCK, name: 'bedrock', faces: allFaces(T.bedrock), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: Infinity, tool: null, requiresTool: false, tierNeeded: 0, liquid: false, drop: null });
 
 export function blockDef(id: BlockId): BlockDef {
   return BLOCKS[id] ?? BLOCKS[0];
