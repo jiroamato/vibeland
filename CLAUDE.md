@@ -1,3 +1,10 @@
+## Commit & PR Conventions
+
+All commit messages and PR titles use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): description` — scope optional. Allowed types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `ci`, `build`, `style`.
+
+- Commits: `feat(mining): add tool tiers`, `fix: glass pane rendering`
+- PR titles: same format. PRs are squash-merged, so the PR title becomes the commit title on main as `type(scope): description (#N)`.
+
 <!-- mulch:start -->
 ## Project Expertise (Mulch)
 <!-- mulch-onboard:v0.10.7 -->
