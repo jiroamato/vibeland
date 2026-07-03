@@ -1,0 +1,6 @@
+project: minecraft-clone
+version: 1
+targets:
+  default:
+    dir: agents
+    default: true
