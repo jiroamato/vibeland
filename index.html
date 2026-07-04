@@ -132,6 +132,42 @@
       }
       .pcell:hover { outline: 2px solid #ffffff; outline-offset: 1px; }
       .pcell canvas { width: 80%; height: 80%; image-rendering: pixelated; }
+
+      /* Survival inventory screen (E) */
+      #invScreen {
+        position: fixed; inset: 0; z-index: 25;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(10, 20, 40, 0.55); backdrop-filter: blur(2px);
+      }
+      #invScreen.hidden { display: none; }
+      #invScreen .panel {
+        background: rgba(0, 0, 0, 0.6); border: 2px solid #2b2b2b; border-radius: 4px;
+        padding: 14px 16px;
+      }
+      #invTitle {
+        color: #fff; font-size: 13px; text-align: center; margin-bottom: 10px;
+        text-shadow: 1px 1px 0 #000;
+      }
+      #invGrid, #invHotbarRow {
+        display: grid; grid-template-columns: repeat(9, var(--hotbar-slot));
+        gap: 4px; image-rendering: pixelated;
+      }
+      #invHotbarRow { margin-top: 12px; }
+      #invScreen .slot { cursor: pointer; }
+      #invScreen .slot:hover { outline: 2px solid #ffffff; outline-offset: 1px; }
+      #invCursorIcon {
+        position: fixed; z-index: 26; pointer-events: none;
+        width: var(--hotbar-slot); height: var(--hotbar-slot);
+        transform: translate(-50%, -50%); image-rendering: pixelated;
+        display: flex; align-items: center; justify-content: center;
+      }
+      #invCursorIcon.hidden { display: none; }
+      #invCursorIcon canvas { width: 80%; height: 80%; }
+      #invCursorIcon .count {
+        position: absolute; right: 2px; bottom: 0;
+        font-size: 14px; font-weight: 700; color: #fff;
+        text-shadow: 1px 1px 0 #3f3f3f;
+      }
     </style>
   </head>
   <body>
@@ -152,6 +188,15 @@
         <div id="pickerGrid"></div>
       </div>
     </div>
+
+    <div id="invScreen" class="hidden">
+      <div class="panel">
+        <div id="invTitle">Inventory     ·     [E] / [Esc] close</div>
+        <div id="invGrid"></div>
+        <div id="invHotbarRow"></div>
+      </div>
+    </div>
+    <div id="invCursorIcon" class="hidden"></div>
 
     <div id="overlay" class="hidden">
       <h1>VIBELAND</h1>
