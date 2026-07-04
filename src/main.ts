@@ -9,6 +9,7 @@ import { Player } from './player';
 import { Input } from './input';
 import { Sky } from './sky';
 import { HeldItem } from './held';
+import { InvScreen } from './invScreen';
 import { UI } from './ui';
 import { Interaction } from './interaction';
 import { Picker } from './picker';
@@ -91,6 +92,7 @@ player.spawn(0, 0);
 let mode: GameMode | null = null; // chosen on first Play click, then fixed
 let rules: GameRules = rulesFor('creative');
 let inventory: Inventory | null = null;
+let invScreen: InvScreen | null = null;
 
 const overlayEl = document.getElementById('overlay')!;
 const loadingEl = document.getElementById('loading')!;
@@ -104,6 +106,8 @@ function choose(m: GameMode) {
     player.allowFly = rules.fly;
     if (m === 'survival') {
       inventory = new Inventory();
+      invScreen = new InvScreen(inventory);
+      invScreen.onChange = syncHotbar;
       ui.showCounts = true;
       ui.setStacks(new Array(HOTBAR_SIZE).fill(null));
       held.setItem(ui.selectedItem);
@@ -119,19 +123,20 @@ function choose(m: GameMode) {
 survivalBtn.addEventListener('click', () => choose('survival'));
 creativeBtn.addEventListener('click', () => choose('creative'));
 input.onLockChange = (locked) => {
-  // While the picker is open the pointer is intentionally released; keep the
-  // start overlay hidden so it doesn't pop up behind the picker.
-  if (picker.open) {
+  // While the picker/inventory screen is open the pointer is intentionally
+  // released; keep the start overlay hidden so it doesn't pop up behind it.
+  if (picker.open || invScreen?.open) {
     overlayEl.classList.add('hidden');
     return;
   }
   overlayEl.classList.toggle('hidden', locked);
 };
 input.onLockError = () => {
-  // A re-lock was rejected (e.g. closing the picker during Chrome's post-Esc
-  // cooldown). Never leave the game stuck unlocked with no UI: close the picker
+  // A re-lock was rejected (e.g. closing a panel during Chrome's post-Esc
+  // cooldown). Never leave the game stuck unlocked with no UI: close panels
   // and show the start overlay so a fresh click can re-enter.
   picker.close();
+  if (invScreen?.open) flushInvScreen();
   overlayEl.classList.remove('hidden');
 };
 
@@ -146,15 +151,45 @@ function closePicker() {
   picker.close();
   input.requestLock(); // gesture-safe: called from the keydown handler below
 }
+
+// --- survival inventory screen (E) ---
+function openInv() {
+  if (!rules.inventoryScreen || !invScreen || !started || invScreen.open || !input.locked) return;
+  invScreen.show(tiles); // pointer released below; onLockChange keeps overlay hidden
+  document.exitPointerLock();
+}
+/** Return the cursor stack, drop any overflow at the feet, hide the panel. */
+function flushInvScreen() {
+  if (!invScreen) return;
+  const overflow = invScreen.logic.close();
+  if (overflow) {
+    // vanilla: what the hand can't stow gets thrown out — drop it at the feet
+    drops.spawn(overflow.item, overflow.count, player.pos.x, player.pos.y + 0.9, player.pos.z);
+  }
+  invScreen.hide();
+  syncHotbar();
+}
+function closeInv() {
+  if (!invScreen || !invScreen.open) return;
+  flushInvScreen();
+  input.requestLock(); // gesture-safe: called from the keydown handler below
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return; // ignore OS key-repeat so a held key can't thrash the picker
   if (e.code === 'KeyE') {
     if (!started) return;
     e.preventDefault();
+    if (rules.picker) {
+      if (picker.open) closePicker();
+      else openPicker();
+    } else if (rules.inventoryScreen) {
+      if (invScreen?.open) closeInv();
+      else openInv();
+    }
+  } else if (e.code === 'Escape') {
     if (picker.open) closePicker();
-    else openPicker();
-  } else if (e.code === 'Escape' && picker.open) {
-    closePicker();
+    else if (invScreen?.open) closeInv();
   }
 });
 
@@ -275,4 +310,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle (handy in the console: e.g. __game.player.pos, __game.sky.time).
-(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held, drops, mode: () => mode, inventory: () => inventory };
+(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held, drops, mode: () => mode, inventory: () => inventory, invScreen: () => invScreen };
