@@ -38,4 +38,33 @@ export class InvCursor {
     this.inv.slots[slot] = this.cursor;
     this.cursor = s;
   }
+
+  /** Vanilla right-click: pick up the larger half / place exactly one. */
+  rightClick(slot: number): void {
+    const s = this.inv.slots[slot];
+    if (!this.cursor) {
+      if (!s) return;
+      const take = Math.ceil(s.count / 2);
+      this.cursor = { item: s.item, count: take };
+      s.count -= take;
+      if (s.count === 0) this.inv.slots[slot] = null;
+      return;
+    }
+    if (!s) {
+      this.inv.slots[slot] = { item: this.cursor.item, count: 1 };
+      this.cursor.count -= 1;
+      if (this.cursor.count === 0) this.cursor = null;
+      return;
+    }
+    if (itemKey(s.item) === itemKey(this.cursor.item)) {
+      if (s.count < maxStack(s.item)) {
+        s.count += 1;
+        this.cursor.count -= 1;
+        if (this.cursor.count === 0) this.cursor = null;
+      }
+      return;
+    }
+    this.inv.slots[slot] = this.cursor;
+    this.cursor = s;
+  }
 }

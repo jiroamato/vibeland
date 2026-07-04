@@ -68,3 +68,48 @@ describe('InvCursor.leftClick', () => {
     expect(cur.cursor).toEqual({ item: pick, count: 1 });
   });
 });
+
+describe('InvCursor.rightClick', () => {
+  it('picks up the larger half of an odd stack', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 7 };
+    cur.rightClick(0);
+    expect(cur.cursor).toEqual({ item: dirt, count: 4 });
+    expect(inv.slots[0]).toEqual({ item: dirt, count: 3 });
+  });
+  it('picking up half of a single-item stack empties the slot', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 1 };
+    cur.rightClick(0);
+    expect(cur.cursor).toEqual({ item: dirt, count: 1 });
+    expect(inv.slots[0]).toBeNull();
+  });
+  it('places exactly one into an empty slot; cursor nulls at zero', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 2 };
+    cur.leftClick(0); // cursor: 2 dirt
+    cur.rightClick(10);
+    cur.rightClick(11);
+    expect(inv.slots[10]).toEqual({ item: dirt, count: 1 });
+    expect(inv.slots[11]).toEqual({ item: dirt, count: 1 });
+    expect(cur.cursor).toBeNull();
+  });
+  it('places one onto a same-item stack, but not past the limit', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 10 };
+    inv.slots[1] = { item: dirt, count: 64 };
+    cur.leftClick(0); // cursor: 10 dirt
+    cur.rightClick(1); // full → no-op
+    expect(inv.slots[1]).toEqual({ item: dirt, count: 64 });
+    expect(cur.cursor).toEqual({ item: dirt, count: 10 });
+  });
+  it('right-click on a different item swaps, like left-click', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 5 };
+    inv.slots[1] = { item: sand, count: 2 };
+    cur.leftClick(0);
+    cur.rightClick(1);
+    expect(inv.slots[1]).toEqual({ item: dirt, count: 5 });
+    expect(cur.cursor).toEqual({ item: sand, count: 2 });
+  });
+});
