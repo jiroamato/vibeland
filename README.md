@@ -32,7 +32,7 @@ type-checks and produces a production build in `dist/`.
 | Left-click (hold) | Break block (crack animation, per-block time) |
 | Right-click | Place selected block |
 | 1–9 / scroll | Select hotbar slot |
-| E | Item picker (creative only) |
+| E | Inventory screen (survival) / item picker (creative) |
 | F3 | Debug overlay (FPS, XYZ, facing, chunk) |
 | Esc | Release mouse |
 
@@ -70,6 +70,7 @@ resolution (16×16) packs match 1:1; higher-resolution packs are downsampled to 
 | `sky.ts` | Sky color, fog, sun/moon, clouds, 20-minute day/night |
 | `held.ts` | First-person held block (overlay scene) + swing; tools/materials render as sprite extrusions |
 | `ui.ts` | Hotbar with stack count badges + F3 debug overlay |
+| `invScreen.ts` | Survival inventory screen (E): cursor transactions + DOM panel |
 | `main.ts` | Wires everything together and runs the frame loop |
 
 ## Out of scope
