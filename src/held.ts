@@ -28,6 +28,8 @@ export class HeldItem {
   private toolGeoCache = new Map<string, THREE.BufferGeometry>();
   private placeholderGeo: THREE.BufferGeometry | null = null; // disposed on first real tool geo
   private armPivot = new THREE.Group(); // shoulder: the bare arm rotates around its lower end
+  private armGeom: THREE.BoxGeometry; // retained like cubeGeom/cubeMat for future disposal
+  private armMat: THREE.MeshBasicMaterial;
   // 'sprite' covers everything rendered as a 16x16 sprite extrusion: tools AND materials.
   private kind: 'block' | 'sprite' | 'arm' = 'block';
   private currentItem: Item | null = null;
@@ -64,7 +66,7 @@ export class HeldItem {
 
     // Bare arm: a skin-toned box with per-face shading (same baked-shade idea
     // as the world mesher), pivoted at the shoulder so punches arc forward.
-    const armGeom = new THREE.BoxGeometry(0.22, 0.9, 0.22);
+    const armGeom = (this.armGeom = new THREE.BoxGeometry(0.22, 0.9, 0.22));
     armGeom.translate(0, 0.45, 0); // origin at the shoulder end
     const skin = new THREE.Color(0xc68e6f);
     // BoxGeometry face order: +x, -x, +y, -y, +z, -z — 4 verts each
@@ -78,8 +80,8 @@ export class HeldItem {
         colors[i + 2] = skin.b * shades[f];
       }
     armGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const armMesh = new THREE.Mesh(armGeom, new THREE.MeshBasicMaterial({ vertexColors: true }));
-    this.armPivot.add(armMesh);
+    this.armMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    this.armPivot.add(new THREE.Mesh(this.armGeom, this.armMat));
     this.armPivot.rotation.order = 'YXZ'; // yaw-then-pitch reads naturally for a limb
     this.armPivot.visible = false;
     this.scene.add(this.armPivot);

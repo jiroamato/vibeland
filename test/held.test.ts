@@ -34,7 +34,9 @@ describe('HeldItem', () => {
     const idleX = root(h, 'arm').rotation.x;
     h.update(1 / 60, true); // trigger the swing
     h.update(1 / 60, false); // advance mid-swing
-    expect(root(h, 'arm').rotation.x).not.toBe(idleX);
+    // directional bound, not bare inequality: the strike must pitch the arm
+    // meaningfully away from idle, so a coefficient regression can't pass
+    expect(root(h, 'arm').rotation.x).toBeLessThan(idleX - 0.05);
     for (let i = 0; i < 60; i++) h.update(1 / 60, false); // full recovery
     expect(root(h, 'arm').rotation.x).toBeCloseTo(idleX, 5);
   });
