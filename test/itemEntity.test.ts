@@ -62,6 +62,38 @@ describe('DropManager', () => {
     for (let i = 0; i < 120; i++) dm.update(1 / 60, new THREE.Vector3(0.5, 0, 0.5), inv, () => {});
     expect(dm.count).toBe(1);
   });
+  it('partial pickup absorbs what fits and reports the pickup', () => {
+    const dm = mk();
+    const inv = new Inventory();
+    inv.slots[0] = { item: dirt, count: 62 }; // room for exactly 2
+    for (let i = 1; i < 36; i++) inv.slots[i] = { item: block(Blocks.SAND), count: 64 };
+    dm.spawn(dirt, 5, 0.5, 0.5, 0.5);
+    let picks = 0;
+    const at = new THREE.Vector3(0.5, 0, 0.5);
+    dm.update(1 / 60, at, inv, () => picks++);
+    expect(picks).toBe(1);
+    expect(inv.slots[0]).toEqual({ item: dirt, count: 64 });
+    expect(dm.count).toBe(1);
+    expect(dm.entities[0].stack.count).toBe(3);
+  });
+  it('overflow cooldown pauses pickup, then the remainder collects once it expires', () => {
+    const dm = mk();
+    const inv = new Inventory();
+    inv.slots[0] = { item: dirt, count: 62 };
+    for (let i = 1; i < 36; i++) inv.slots[i] = { item: block(Blocks.SAND), count: 64 };
+    dm.spawn(dirt, 5, 0.5, 0.5, 0.5);
+    let picks = 0;
+    const at = new THREE.Vector3(0.5, 0, 0.5);
+    dm.update(1 / 60, at, inv, () => picks++); // partial pickup starts the 1.5s cooldown
+    inv.slots[1] = null; // space frees up immediately...
+    for (let i = 0; i < 10; i++) dm.update(0.1, at, inv, () => picks++);
+    expect(picks).toBe(1); // ...but the cooldown still blocks pickup at t < 1.5s
+    expect(dm.count).toBe(1);
+    for (let i = 0; i < 10; i++) dm.update(0.1, at, inv, () => picks++);
+    expect(picks).toBe(2); // cooldown expired: remainder vacuumed in
+    expect(dm.count).toBe(0);
+    expect(inv.slots[1]).toEqual({ item: dirt, count: 3 });
+  });
   it('drops despawn after 300s and the cap culls the oldest', () => {
     const dm = mk();
     dm.spawn(dirt, 1, 0.5, 0.5, 0.5);

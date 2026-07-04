@@ -35,3 +35,45 @@ describe('dropFor', () => {
     expect(dropFor(d(Blocks.GLASS), null)).toBeNull();
   });
 });
+
+// Full drop matrix: every block id x a representative held item. Pins the whole
+// table so a drop-spec edit can never silently change another block's yield.
+describe('dropFor matrix', () => {
+  const woodAxe = tool(ToolType.Axe, Tier.Wood);
+  const woodShovel = tool(ToolType.Shovel, Tier.Wood);
+  const goldPick = tool(ToolType.Pickaxe, Tier.Gold);
+  const diamondPick = tool(ToolType.Pickaxe, Tier.Diamond);
+  const cases: [name: string, id: number, held: ReturnType<typeof tool> | null, expected: unknown][] = [
+    ['air / hand', Blocks.AIR, null, null],
+    ['stone / hand', Blocks.STONE, null, null],
+    ['stone / wood pick', Blocks.STONE, woodPick, block(Blocks.COBBLESTONE)],
+    ['stone / axe (wrong tool)', Blocks.STONE, woodAxe, null],
+    ['grass / hand', Blocks.GRASS, null, block(Blocks.DIRT)],
+    ['grass / shovel', Blocks.GRASS, woodShovel, block(Blocks.DIRT)],
+    ['dirt / hand', Blocks.DIRT, null, block(Blocks.DIRT)],
+    ['cobblestone / hand', Blocks.COBBLESTONE, null, null],
+    ['cobblestone / wood pick', Blocks.COBBLESTONE, woodPick, block(Blocks.COBBLESTONE)],
+    ['sand / hand', Blocks.SAND, null, block(Blocks.SAND)],
+    ['oak log / hand', Blocks.OAK_LOG, null, block(Blocks.OAK_LOG)],
+    ['oak log / axe', Blocks.OAK_LOG, woodAxe, block(Blocks.OAK_LOG)],
+    ['oak planks / hand', Blocks.OAK_PLANKS, null, block(Blocks.OAK_PLANKS)],
+    ['oak leaves / hand', Blocks.OAK_LEAVES, null, null],
+    ['oak leaves / hoe (correct tool, null drop)', Blocks.OAK_LEAVES, tool(ToolType.Hoe, Tier.Wood), null],
+    ['glass / hand', Blocks.GLASS, null, null],
+    ['glass / diamond pick', Blocks.GLASS, diamondPick, null],
+    ['water / hand', Blocks.WATER, null, null],
+    ['coal ore / hand', Blocks.COAL_ORE, null, null],
+    ['coal ore / wood pick', Blocks.COAL_ORE, woodPick, material(Material.Coal)],
+    ['coal ore / axe (wrong tool)', Blocks.COAL_ORE, woodAxe, null],
+    ['iron ore / hand', Blocks.IRON_ORE, null, null],
+    ['iron ore / wood pick (tier too low)', Blocks.IRON_ORE, woodPick, null],
+    ['iron ore / gold pick (gold mines at wood level)', Blocks.IRON_ORE, goldPick, null],
+    ['iron ore / stone pick', Blocks.IRON_ORE, stonePick, material(Material.RawIron)],
+    ['iron ore / diamond pick', Blocks.IRON_ORE, diamondPick, material(Material.RawIron)],
+    ['bedrock / hand', Blocks.BEDROCK, null, null],
+    ['bedrock / diamond pick', Blocks.BEDROCK, diamondPick, null],
+  ];
+  it.each(cases)('%s', (_name, id, held, expected) => {
+    expect(dropFor(d(id), held)).toEqual(expected);
+  });
+});

@@ -26,7 +26,8 @@ export class HeldItem {
   private toolPivot = new THREE.Group(); // wrist: sits at the handle end so swings arc forward
   private toolGeoCache = new Map<string, THREE.BufferGeometry>();
   private placeholderGeo: THREE.BufferGeometry | null = null; // disposed on first real tool geo
-  private kind: 'block' | 'tool' = 'block';
+  // 'sprite' covers everything rendered as a 16x16 sprite extrusion: tools AND materials.
+  private kind: 'block' | 'sprite' = 'block';
   private currentItem: Item | null = null;
   private currentKey = ''; // itemKey of the current item; skip redundant rebuilds
   private phase = 0; // 0 == idle, (0,1] == mid-swing
@@ -76,7 +77,7 @@ export class HeldItem {
       this.toolPivot.visible = false;
       this.skinBlock(item.block);
     } else {
-      this.kind = 'tool';
+      this.kind = 'sprite';
       this.cube.visible = false;
       this.toolPivot.visible = true;
       let geo = this.toolGeoCache.get(key);
@@ -93,11 +94,14 @@ export class HeldItem {
     }
   }
 
-  /** Rebuild cached tool meshes — call after async tool textures finish loading. */
+  /**
+   * Rebuild cached sprite geometries (tools and materials) — call after the
+   * async tool textures finish loading so held meshes pick up the new pixels.
+   */
   refreshTools(): void {
     for (const g of this.toolGeoCache.values()) g.dispose();
     this.toolGeoCache.clear();
-    if (this.kind === 'tool' && this.currentItem) {
+    if (this.kind === 'sprite' && this.currentItem) {
       this.currentKey = ''; // force setItem to rebuild from the new pixels
       this.setItem(this.currentItem);
     }
