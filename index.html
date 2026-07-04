@@ -153,6 +153,13 @@
         gap: 4px; image-rendering: pixelated;
       }
       #invHotbarRow { margin-top: 12px; }
+      #invCraft {
+        display: flex; align-items: center; justify-content: flex-end;
+        gap: 12px; margin-bottom: 14px;
+      }
+      #invCraftGrid { display: grid; gap: 4px; image-rendering: pixelated; }
+      #invCraft .arrow { color: #fff; font-size: 22px; text-shadow: 1px 1px 0 #000; }
+      #invResult { outline: 2px solid #d4a72c; outline-offset: 1px; }
       #invScreen .slot { cursor: pointer; }
       #invScreen .slot:hover { outline: 2px solid #ffffff; outline-offset: 1px; }
       #invCursorIcon {
@@ -192,6 +199,11 @@
     <div id="invScreen" class="hidden">
       <div class="panel">
         <div id="invTitle">Inventory     ·     [E] / [Esc] close</div>
+        <div id="invCraft">
+          <div id="invCraftGrid"></div>
+          <div class="arrow">→</div>
+          <div id="invResult" class="slot"></div>
+        </div>
         <div id="invGrid"></div>
         <div id="invHotbarRow"></div>
       </div>

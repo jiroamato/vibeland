@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { Material, Blocks, ToolType } from '../src/blocks';
-import { block, tool, material, itemKey, maxStack, materialDisplayName, Tier } from '../src/items';
+import { block, tool, material, itemKey, maxStack, materialDisplayName, allItems, Tier } from '../src/items';
 
 describe('material items', () => {
   it('itemKey distinguishes all three kinds', () => {
@@ -20,5 +20,9 @@ describe('material items', () => {
   });
   it('display names', () => {
     expect(materialDisplayName(Material.RawIron)).toBe('Raw Iron');
+  });
+  it('creative picker catalogue offers the crafting table exactly once', () => {
+    const tables = allItems().filter((i) => itemKey(i) === itemKey(block(Blocks.CRAFTING_TABLE)));
+    expect(tables).toHaveLength(1);
   });
 });
