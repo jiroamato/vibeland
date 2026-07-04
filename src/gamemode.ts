@@ -11,9 +11,16 @@ export interface GameRules {
   picker: boolean; // E opens the creative item picker
   drops: boolean; // breaking spawns item entities
   consumeOnPlace: boolean; // placing decrements the held stack
+  inventoryScreen: boolean; // E opens the survival inventory screen
 }
 
 export function rulesFor(mode: GameMode): GameRules {
   const creative = mode === 'creative';
-  return { fly: creative, picker: creative, drops: !creative, consumeOnPlace: !creative };
+  return {
+    fly: creative,
+    picker: creative,
+    drops: !creative,
+    consumeOnPlace: !creative,
+    inventoryScreen: !creative,
+  };
 }
