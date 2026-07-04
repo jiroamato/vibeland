@@ -25,8 +25,11 @@ export class UI {
   private hotbarEl = document.getElementById('hotbar')!;
   private debugEl = document.getElementById('debug')!;
   private fpsEl = document.getElementById('fps')!;
+  private heartsEl = document.getElementById('hearts')!;
+  private flashEl = document.getElementById('damageFlash')!;
   private slots: HTMLElement[] = [];
   private tiles: HTMLCanvasElement[] = [];
+  private heartFills: HTMLElement[] = [];
   /** The 9 visible hotbar stacks. Creative wraps plain items with count 1. */
   hotbar: (ItemStack | null)[] = defaultHotbar().map((item) => ({ item, count: 1 }));
   /** Show count badges (survival). Creative leaves them hidden. */
@@ -37,6 +40,39 @@ export class UI {
   /** Update the always-on top-left FPS counter. */
   updateFps(fps: number): void {
     this.fpsEl.textContent = fps + ' fps';
+  }
+
+  /** Show the hearts row (survival) and build its 10 hearts once. */
+  showHearts(): void {
+    if (this.heartFills.length === 0) {
+      for (let i = 0; i < 10; i++) {
+        const heart = document.createElement('span');
+        heart.className = 'heart';
+        heart.textContent = '♥';
+        const fill = document.createElement('span');
+        fill.className = 'fill';
+        fill.textContent = '♥';
+        heart.appendChild(fill);
+        this.heartsEl.appendChild(heart);
+        this.heartFills.push(fill);
+      }
+    }
+    this.heartsEl.classList.add('visible');
+  }
+
+  /** Repaint the hearts from hp (2 hp per heart, half-heart granularity). */
+  setHealth(hp: number): void {
+    this.heartFills.forEach((fill, i) => {
+      const w = hp >= (i + 1) * 2 ? '100%' : hp >= i * 2 + 1 ? '50%' : '0';
+      fill.style.width = w;
+    });
+  }
+
+  /** Pulse the red damage vignette (retriggers cleanly mid-animation). */
+  damageFlash(): void {
+    this.flashEl.classList.remove('hit');
+    void this.flashEl.offsetWidth; // reflow so the animation restarts
+    this.flashEl.classList.add('hit');
   }
 
   buildHotbar(tiles: HTMLCanvasElement[]): void {

@@ -58,6 +58,46 @@
         text-shadow: 1px 1px 0 #3f3f3f;
       }
 
+      /* Hearts (survival): 10 hearts above the hotbar */
+      #hearts {
+        position: absolute; left: 50%; bottom: 78px; transform: translateX(-50%);
+        display: none; gap: 2px;
+      }
+      #hearts.visible { display: flex; }
+      .heart {
+        position: relative; width: 18px; height: 18px;
+        font-size: 17px; line-height: 18px; color: #3a0c0c;
+        text-shadow: 1px 1px 0 #000;
+      }
+      .heart .fill {
+        position: absolute; left: 0; top: 0; height: 100%;
+        overflow: hidden; color: #e02020; text-shadow: 1px 1px 0 #5a0000;
+      }
+
+      /* Red vignette pulse on damage */
+      #damageFlash {
+        position: fixed; inset: 0; z-index: 15; pointer-events: none; opacity: 0;
+        background: radial-gradient(ellipse at center, transparent 45%, rgba(200, 0, 0, 0.5) 100%);
+      }
+      #damageFlash.hit { animation: dmgflash 0.5s ease-out; }
+      @keyframes dmgflash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+      /* Death screen (above the pause overlay) */
+      #deathScreen {
+        position: fixed; inset: 0; z-index: 35;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: rgba(90, 0, 0, 0.55); backdrop-filter: blur(2px);
+        color: #fff; text-align: center;
+      }
+      #deathScreen.hidden { display: none; }
+      #deathScreen h1 { font-size: 40px; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; margin-bottom: 18px; }
+      #respawnBtn {
+        padding: 12px 30px; font-size: 18px; cursor: pointer;
+        background: #6aab3a; color: #fff; border: 2px solid #000; border-radius: 3px;
+        text-shadow: 1px 1px 0 #2f5018; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.25);
+      }
+      #respawnBtn:hover { background: #79c043; }
+
       /* Always-on FPS counter (top-left). Hidden while the F3 overlay is up,
          since that overlay already reports FPS. */
       #fps {
@@ -184,7 +224,14 @@
       <div id="crosshair"></div>
       <div id="fps">— fps</div>
       <div id="debug"></div>
+      <div id="hearts"></div>
       <div id="hotbar"></div>
+    </div>
+    <div id="damageFlash"></div>
+
+    <div id="deathScreen" class="hidden">
+      <h1>You died</h1>
+      <button id="respawnBtn">Respawn</button>
     </div>
 
     <div id="loading">Generating world…</div>

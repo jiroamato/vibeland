@@ -47,6 +47,9 @@ export class Player {
   onGround = false;
   sprinting = false;
   sneaking = false;
+  /** Blocks fallen, set on the frame the player lands (0 otherwise). */
+  landedFall = 0;
+  private fallDistance = 0;
 
   private world: World;
   private targetFov = FOV_BASE;
@@ -72,6 +75,8 @@ export class Player {
     const y = this.world.highestSolid(Math.floor(x), Math.floor(z)) + 1;
     this.pos.set(x + 0.5, y + 0.2, z + 0.5);
     this.vel.set(0, 0, 0);
+    this.fallDistance = 0;
+    this.landedFall = 0;
   }
 
   private solidAt(x: number, y: number, z: number): boolean {
@@ -169,6 +174,7 @@ export class Player {
     }
 
     this.onGround = false;
+    const startY = this.pos.y;
 
     // --- integrate with collision, axis-separated and sub-stepped ---
     // Sub-step so a single collision step never moves more than ~half a block,
@@ -199,6 +205,21 @@ export class Player {
       if (sneakProtect && this.onGround && !this.supported(this.pos.x, this.pos.z)) {
         this.pos.z = beforeZ;
         this.vel.z = 0;
+      }
+    }
+
+    // --- fall tracking: accumulate downward travel, report on touchdown ---
+    // Flying and liquids (water landings are safe, vanilla) clear the tally.
+    this.landedFall = 0;
+    const feetId = this.world.getBlock(Math.floor(this.pos.x), Math.floor(this.pos.y), Math.floor(this.pos.z));
+    if (this.flying || blockDef(feetId).liquid) {
+      this.fallDistance = 0;
+    } else {
+      const dropped = startY - this.pos.y;
+      if (dropped > 0) this.fallDistance += dropped;
+      if (this.onGround) {
+        this.landedFall = this.fallDistance;
+        this.fallDistance = 0;
       }
     }
 

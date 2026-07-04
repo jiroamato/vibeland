@@ -16,8 +16,10 @@ npm run dev      # open the printed http://localhost:5173 URL
 The start screen offers **Play Survival** and **Play Creative** (either locks the mouse).
 Creative is the original sandbox: fly, infinite blocks, item picker. Survival starts with
 an empty hotbar — mine bare-handed and blocks pop out as Minecraft-style item drops that
-vacuum into a stacking 36-slot inventory; placing consumes items. `npm run build`
-type-checks and produces a production build in `dist/`.
+vacuum into a stacking 36-slot inventory; placing consumes items. Craft planks, sticks,
+a crafting table and wood/stone tools; watch your 10 hearts — falls past 3 blocks hurt,
+and dying scatters your inventory where you fell (respawn at spawn, run back for it).
+`npm run build` type-checks and produces a production build in `dist/`.
 
 ## Controls
 
@@ -73,6 +75,7 @@ resolution (16×16) packs match 1:1; higher-resolution packs are downsampled to 
 | `ui.ts` | Hotbar with stack count badges + F3 debug overlay |
 | `invScreen.ts` | Survival inventory screen (E): cursor transactions + DOM panel |
 | `crafting.ts` | Shaped recipes: matcher (bounding box + mirror), recipe set, craft-grid state |
+| `health.ts` | Survival health: 20 HP, passive regen, vanilla fall-damage formula |
 | `main.ts` | Wires everything together and runs the frame loop |
 
 ## Out of scope
