@@ -4,8 +4,8 @@
 // pattern by itemKey. Pure logic, runs in plain node.
 
 import { describe, it, expect } from 'vitest';
-import { matchRecipe } from '../src/crafting';
-import { ItemStack } from '../src/inventory';
+import { matchRecipe, CraftArea } from '../src/crafting';
+import { Inventory, ItemStack } from '../src/inventory';
 import { block, tool, material, Tier } from '../src/items';
 import { Blocks, Material, ToolType } from '../src/blocks';
 
@@ -88,5 +88,67 @@ describe('matchRecipe', () => {
   it('empty grid matches nothing', () => {
     expect(matchRecipe(grid(['...', '...', '...'], 3), 3, 3)).toBeNull();
     expect(matchRecipe(grid(['..', '..'], 2), 2, 2)).toBeNull();
+  });
+});
+
+describe('CraftArea', () => {
+  it('result() reflects the current grid', () => {
+    const area = new CraftArea(2, 2);
+    expect(area.result()).toBeNull();
+    area.slots[0] = s(log);
+    expect(area.result()).toEqual({ item: planks, count: 4 });
+  });
+  it('takeResult with an empty cursor takes one craft and decrements inputs', () => {
+    const area = new CraftArea(2, 2);
+    area.slots[0] = s(log, 3);
+    const cursor = area.takeResult(null);
+    expect(cursor).toEqual({ item: planks, count: 4 });
+    expect(area.slots[0]).toEqual({ item: log, count: 2 });
+    expect(area.result()).toEqual({ item: planks, count: 4 }); // still craftable
+  });
+  it('inputs null at zero and the result disappears', () => {
+    const area = new CraftArea(2, 2);
+    area.slots[1] = s(log, 1);
+    area.takeResult(null);
+    expect(area.slots[1]).toBeNull();
+    expect(area.result()).toBeNull();
+  });
+  it('takeResult stacks onto a same-item cursor, rejects a different one', () => {
+    const area = new CraftArea(2, 2);
+    area.slots[0] = s(log, 2);
+    let cursor: ItemStack | null = { item: planks, count: 4 };
+    cursor = area.takeResult(cursor);
+    expect(cursor).toEqual({ item: planks, count: 8 });
+    const wrong: ItemStack = { item: cobble, count: 1 };
+    expect(area.takeResult(wrong)).toBe(wrong); // unchanged, no craft consumed
+    expect(area.slots[0]).toEqual({ item: log, count: 1 });
+  });
+  it('takeResult refuses when the cursor cannot hold another craft', () => {
+    const area = new CraftArea(2, 2);
+    area.slots[0] = s(log, 1);
+    const full: ItemStack = { item: planks, count: 62 }; // 62 + 4 > 64
+    expect(area.takeResult(full)).toBe(full);
+    expect(area.slots[0]).toEqual({ item: log, count: 1 });
+  });
+  it('multi-cell recipes decrement every occupied cell once', () => {
+    const area = new CraftArea(3, 3);
+    const g = grid(['ppp', '.s.', '.s.'], 3);
+    for (let i = 0; i < 9; i++) area.slots[i] = g[i] ? { ...g[i]!, count: 2 } : null;
+    area.takeResult(null);
+    expect(area.slots[0]).toEqual({ item: planks, count: 1 });
+    expect(area.slots[4]).toEqual({ item: stick, count: 1 });
+    expect(area.slots[3]).toBeNull(); // was empty, stays empty
+  });
+  it('flush returns grid contents to the inventory and reports overflow', () => {
+    const area = new CraftArea(2, 2);
+    const inv = new Inventory();
+    area.slots[0] = s(log, 5);
+    expect(area.flush(inv)).toEqual([]);
+    expect(inv.slots[0]).toEqual({ item: log, count: 5 });
+    expect(area.slots[0]).toBeNull();
+
+    area.slots[0] = s(planks, 10);
+    for (let i = 0; i < 36; i++) inv.slots[i] = { item: cobble, count: 64 };
+    expect(area.flush(inv)).toEqual([{ item: planks, count: 10 }]);
   });
 });

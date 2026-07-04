@@ -17,15 +17,20 @@ export class InvCursor {
 
   /** Vanilla left-click: pick up / place / merge (same item) / swap. */
   leftClick(slot: number): void {
-    const s = this.inv.slots[slot];
+    this.leftClickAt(this.inv.slots, slot);
+  }
+
+  /** leftClick against any slot array (the craft grid uses this). */
+  leftClickAt(slots: (ItemStack | null)[], slot: number): void {
+    const s = slots[slot];
     if (!this.cursor) {
       if (!s) return;
       this.cursor = s;
-      this.inv.slots[slot] = null;
+      slots[slot] = null;
       return;
     }
     if (!s) {
-      this.inv.slots[slot] = this.cursor;
+      slots[slot] = this.cursor;
       this.cursor = null;
       return;
     }
@@ -34,7 +39,7 @@ export class InvCursor {
       if (take === 0) {
         // slot already at capacity: vanilla falls back to a swap so a full
         // stack is still retrievable while holding the same item
-        this.inv.slots[slot] = this.cursor;
+        slots[slot] = this.cursor;
         this.cursor = s;
         return;
       }
@@ -43,23 +48,28 @@ export class InvCursor {
       if (this.cursor.count === 0) this.cursor = null;
       return;
     }
-    this.inv.slots[slot] = this.cursor;
+    slots[slot] = this.cursor;
     this.cursor = s;
   }
 
   /** Vanilla right-click: pick up the larger half / place exactly one. */
   rightClick(slot: number): void {
-    const s = this.inv.slots[slot];
+    this.rightClickAt(this.inv.slots, slot);
+  }
+
+  /** rightClick against any slot array (the craft grid uses this). */
+  rightClickAt(slots: (ItemStack | null)[], slot: number): void {
+    const s = slots[slot];
     if (!this.cursor) {
       if (!s) return;
       const take = Math.ceil(s.count / 2);
       this.cursor = { item: s.item, count: take };
       s.count -= take;
-      if (s.count === 0) this.inv.slots[slot] = null;
+      if (s.count === 0) slots[slot] = null;
       return;
     }
     if (!s) {
-      this.inv.slots[slot] = { item: this.cursor.item, count: 1 };
+      slots[slot] = { item: this.cursor.item, count: 1 };
       this.cursor.count -= 1;
       if (this.cursor.count === 0) this.cursor = null;
       return;
@@ -72,7 +82,7 @@ export class InvCursor {
       }
       return;
     }
-    this.inv.slots[slot] = this.cursor;
+    slots[slot] = this.cursor;
     this.cursor = s;
   }
 

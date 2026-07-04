@@ -6,8 +6,8 @@
 // invScreen.ts's task) layers slot state on top. Pure logic, no DOM.
 // ---------------------------------------------------------------------------
 
-import { ItemStack } from './inventory';
-import { Item, block, tool, material, itemKey, Tier } from './items';
+import { Inventory, ItemStack } from './inventory';
+import { Item, block, tool, material, itemKey, maxStack, Tier } from './items';
 import { Blocks, Material, ToolType } from './blocks';
 
 export interface CraftResult {
@@ -98,4 +98,54 @@ export function matchRecipe(slots: (ItemStack | null)[], w: number, h: number): 
     if (r.mirror && boxesEqual(box, patternBox(r, true))) return { item: r.result, count: r.count };
   }
   return null;
+}
+
+/** The crafting grid's slot state + result-taking and close-flush rules. */
+export class CraftArea {
+  slots: (ItemStack | null)[];
+
+  constructor(
+    public w: number,
+    public h: number,
+  ) {
+    this.slots = new Array(w * h).fill(null);
+  }
+
+  result(): CraftResult | null {
+    return matchRecipe(this.slots, this.w, this.h);
+  }
+
+  /**
+   * Take ONE craft into the cursor if it is compatible (empty, or the same
+   * item with room for the whole yield); every occupied grid cell decrements
+   * by one. Returns the new cursor — the same object when nothing happened.
+   */
+  takeResult(cursor: ItemStack | null): ItemStack | null {
+    const r = this.result();
+    if (!r) return cursor;
+    if (cursor) {
+      if (itemKey(cursor.item) !== itemKey(r.item)) return cursor;
+      if (cursor.count + r.count > maxStack(r.item)) return cursor;
+    }
+    for (let i = 0; i < this.slots.length; i++) {
+      const s = this.slots[i];
+      if (!s) continue;
+      s.count -= 1;
+      if (s.count === 0) this.slots[i] = null;
+    }
+    return cursor ? { item: cursor.item, count: cursor.count + r.count } : { item: r.item, count: r.count };
+  }
+
+  /** Empty every slot back into inv (its merge rules); return what didn't fit. */
+  flush(inv: Inventory): ItemStack[] {
+    const overflow: ItemStack[] = [];
+    for (let i = 0; i < this.slots.length; i++) {
+      const s = this.slots[i];
+      if (!s) continue;
+      const left = inv.add(s.item, s.count);
+      if (left > 0) overflow.push({ item: s.item, count: left });
+      this.slots[i] = null;
+    }
+    return overflow;
+  }
 }

@@ -123,6 +123,19 @@ describe('InvCursor.rightClick', () => {
   });
 });
 
+describe('InvCursor click-at (arbitrary slot arrays)', () => {
+  it('leftClickAt/rightClickAt operate on a bare array (craft grids)', () => {
+    const { cur } = mk();
+    const craft: (typeof cur.cursor)[] = [null, { item: dirt, count: 5 }, null, null];
+    cur.leftClickAt(craft, 1);
+    expect(cur.cursor).toEqual({ item: dirt, count: 5 });
+    expect(craft[1]).toBeNull();
+    cur.rightClickAt(craft, 0);
+    expect(craft[0]).toEqual({ item: dirt, count: 1 });
+    expect(cur.cursor).toEqual({ item: dirt, count: 4 });
+  });
+});
+
 describe('InvCursor.close', () => {
   it('returns null and flushes the cursor back into the inventory', () => {
     const { inv, cur } = mk();
