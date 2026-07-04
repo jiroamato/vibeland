@@ -20,7 +20,7 @@ import { generateDefaultTiles, buildAtlas, paintAtlas, loadToolTextures } from '
 import { loadResourcePack } from './resourcepack';
 import { CHUNK_SX, CHUNK_SZ, floorDiv } from './constants';
 import { GameMode, GameRules, rulesFor } from './gamemode';
-import { Inventory, HOTBAR_SIZE } from './inventory';
+import { Inventory, ItemStack, HOTBAR_SIZE } from './inventory';
 import { DropManager, EntityWorld } from './itemEntity';
 import { buildDropMesh } from './itemMesh';
 import { Blocks, blockDef } from './blocks';
@@ -172,24 +172,31 @@ function useBlock(id: number): boolean {
   return true;
 }
 // --- death & respawn ---
+/** Spawn a death drop with a little X/Z jitter so stacks fan out. */
+function scatterDrop(s: ItemStack) {
+  drops.spawn(
+    s.item,
+    s.count,
+    player.pos.x + (Math.random() - 0.5),
+    player.pos.y + 0.9,
+    player.pos.z + (Math.random() - 0.5),
+  );
+}
+
 /** Scatter the whole inventory at the death spot and show the death screen. */
 function die() {
   if (!inventory) return;
+  // Unreachable today (fall damage only ticks while pointer-locked, and the
+  // screen open means unlocked) — kept as defence for future damage sources
+  // (drowning, fire ticks) that won't be gated on pointer lock.
   if (invScreen?.open) {
-    for (const o of invScreen.closeAll())
-      drops.spawn(o.item, o.count, player.pos.x, player.pos.y + 0.9, player.pos.z);
+    for (const o of invScreen.closeAll()) scatterDrop(o);
     invScreen.hide();
   }
   for (let i = 0; i < inventory.slots.length; i++) {
     const s = inventory.slots[i];
     if (!s) continue;
-    drops.spawn(
-      s.item,
-      s.count,
-      player.pos.x + (Math.random() - 0.5),
-      player.pos.y + 0.9,
-      player.pos.z + (Math.random() - 0.5),
-    );
+    scatterDrop(s);
     inventory.slots[i] = null;
   }
   syncHotbar();
