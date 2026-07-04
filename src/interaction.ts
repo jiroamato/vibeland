@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import type { World } from './world';
 import { Player } from './player';
 import { Input } from './input';
-import { Blocks, blockDef } from './blocks';
+import { BlockId, Blocks, blockDef } from './blocks';
 import { Item, breakSeconds, itemKey, dropFor } from './items';
 import type { DropManager } from './itemEntity';
 import type { Inventory } from './inventory';
@@ -21,6 +21,8 @@ export interface SurvivalCtx {
   inventory: Inventory;
   selectedSlot: number;
   onChange: () => void; // main re-syncs hotbar UI + held item
+  /** Right-click on a block: return true to handle it (skips placing). */
+  onUseBlock?: (id: BlockId) => boolean;
 }
 
 export interface RayHit {
@@ -252,6 +254,10 @@ export class Interaction {
 
     // --- placing (right-click) --- only blocks place; tools just swing.
     if (input.rightJustPressed) {
+      // usable blocks (crafting table) take priority over placing
+      if (survival?.onUseBlock?.(id)) {
+        return true;
+      }
       if (selected && selected.kind === 'block') {
         const px = hit.x + hit.nx;
         const py = hit.y + hit.ny;

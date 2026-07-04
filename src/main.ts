@@ -22,7 +22,7 @@ import { GameMode, GameRules, rulesFor } from './gamemode';
 import { Inventory, HOTBAR_SIZE } from './inventory';
 import { DropManager, EntityWorld } from './itemEntity';
 import { buildDropMesh } from './itemMesh';
-import { blockDef } from './blocks';
+import { Blocks, blockDef } from './blocks';
 
 // --- renderer / scene ---
 const app = document.getElementById('app')!;
@@ -152,19 +152,24 @@ function closePicker() {
   input.requestLock(); // gesture-safe: called from the keydown handler below
 }
 
-// --- survival inventory screen (E) ---
-function openInv() {
+// --- survival inventory screen (E) / crafting table (right-click) ---
+function openInv(craftSize: 2 | 3 = 2) {
   if (!rules.inventoryScreen || !invScreen || !started || invScreen.open || !input.locked) return;
-  invScreen.show(tiles); // pointer released below; onLockChange keeps overlay hidden
+  invScreen.show(tiles, craftSize); // pointer released below; onLockChange keeps overlay hidden
   document.exitPointerLock();
 }
-/** Return the cursor stack, drop any overflow at the feet, hide the panel. */
+/** Right-clicked a block in survival: crafting tables open the 3x3 screen. */
+function useBlock(id: number): boolean {
+  if (id !== Blocks.CRAFTING_TABLE) return false;
+  openInv(3);
+  return true;
+}
+/** Return craft grid + cursor stacks, drop any overflow, hide the panel. */
 function flushInvScreen() {
   if (!invScreen) return;
-  const overflow = invScreen.logic.close();
-  if (overflow) {
+  for (const o of invScreen.closeAll()) {
     // vanilla: what the hand can't stow gets thrown out — drop it at the feet
-    drops.spawn(overflow.item, overflow.count, player.pos.x, player.pos.y + 0.9, player.pos.z);
+    drops.spawn(o.item, o.count, player.pos.x, player.pos.y + 0.9, player.pos.z);
   }
   invScreen.hide();
   syncHotbar();
@@ -270,7 +275,9 @@ function frame(now: number) {
   let swung = false;
   if (started && input.locked) {
     player.update(dt, input);
-    const survival = inventory ? { drops, inventory, selectedSlot: ui.selected, onChange: syncHotbar } : null;
+    const survival = inventory
+      ? { drops, inventory, selectedSlot: ui.selected, onChange: syncHotbar, onUseBlock: useBlock }
+      : null;
     swung = interaction.update(dt, input, player, world, ui.selectedItem, survival);
     drops.update(dt, player.pos, inventory, syncHotbar);
   } else {
