@@ -10,6 +10,7 @@ import { Input } from './input';
 import { Sky } from './sky';
 import { HeldItem } from './held';
 import { InvScreen } from './invScreen';
+import { Health, fallDamage } from './health';
 import { UI } from './ui';
 import { Interaction } from './interaction';
 import { Picker } from './picker';
@@ -93,11 +94,14 @@ let mode: GameMode | null = null; // chosen on first Play click, then fixed
 let rules: GameRules = rulesFor('creative');
 let inventory: Inventory | null = null;
 let invScreen: InvScreen | null = null;
+let health: Health | null = null;
 
 const overlayEl = document.getElementById('overlay')!;
 const loadingEl = document.getElementById('loading')!;
 const survivalBtn = document.getElementById('playSurvival')!;
 const creativeBtn = document.getElementById('playCreative')!;
+const deathEl = document.getElementById('deathScreen')!;
+const respawnBtn = document.getElementById('respawnBtn')!;
 
 function choose(m: GameMode) {
   if (mode === null) {
@@ -108,6 +112,9 @@ function choose(m: GameMode) {
       inventory = new Inventory();
       invScreen = new InvScreen(inventory);
       invScreen.onChange = syncHotbar;
+      health = new Health();
+      ui.showHearts();
+      ui.setHealth(health.hp);
       ui.showCounts = true;
       ui.setStacks(new Array(HOTBAR_SIZE).fill(null));
       held.setItem(ui.selectedItem);
@@ -123,9 +130,9 @@ function choose(m: GameMode) {
 survivalBtn.addEventListener('click', () => choose('survival'));
 creativeBtn.addEventListener('click', () => choose('creative'));
 input.onLockChange = (locked) => {
-  // While the picker/inventory screen is open the pointer is intentionally
-  // released; keep the start overlay hidden so it doesn't pop up behind it.
-  if (picker.open || invScreen?.open) {
+  // While the picker/inventory screen/death screen is up the pointer is
+  // intentionally released; keep the start overlay hidden behind them.
+  if (picker.open || invScreen?.open || !deathEl.classList.contains('hidden')) {
     overlayEl.classList.add('hidden');
     return;
   }
@@ -164,6 +171,40 @@ function useBlock(id: number): boolean {
   openInv(3);
   return true;
 }
+// --- death & respawn ---
+/** Scatter the whole inventory at the death spot and show the death screen. */
+function die() {
+  if (!inventory) return;
+  if (invScreen?.open) {
+    for (const o of invScreen.closeAll())
+      drops.spawn(o.item, o.count, player.pos.x, player.pos.y + 0.9, player.pos.z);
+    invScreen.hide();
+  }
+  for (let i = 0; i < inventory.slots.length; i++) {
+    const s = inventory.slots[i];
+    if (!s) continue;
+    drops.spawn(
+      s.item,
+      s.count,
+      player.pos.x + (Math.random() - 0.5),
+      player.pos.y + 0.9,
+      player.pos.z + (Math.random() - 0.5),
+    );
+    inventory.slots[i] = null;
+  }
+  syncHotbar();
+  deathEl.classList.remove('hidden');
+  document.exitPointerLock();
+}
+respawnBtn.addEventListener('click', () => {
+  if (!health) return;
+  player.spawn(0, 0);
+  health.reset();
+  ui.setHealth(health.hp);
+  deathEl.classList.add('hidden');
+  input.requestLock(); // gesture-safe: runs in the click handler
+});
+
 /** Return craft grid + cursor stacks, drop any overflow, hide the panel. */
 function flushInvScreen() {
   if (!invScreen) return;
@@ -280,6 +321,16 @@ function frame(now: number) {
       : null;
     swung = interaction.update(dt, input, player, world, ui.selectedItem, survival);
     drops.update(dt, player.pos, inventory, syncHotbar);
+    if (health && !health.dead) {
+      const dmg = fallDamage(player.landedFall);
+      if (dmg > 0) {
+        health.damage(dmg);
+        ui.damageFlash();
+        ui.setHealth(health.hp);
+        if (health.dead) die();
+      }
+      if (health.tick(dt)) ui.setHealth(health.hp);
+    }
   } else {
     // keep camera oriented even while paused
     player.camera.rotation.y = player.yaw;
@@ -317,4 +368,4 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Debug handle (handy in the console: e.g. __game.player.pos, __game.sky.time).
-(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held, drops, mode: () => mode, inventory: () => inventory, invScreen: () => invScreen };
+(window as any).__game = { player, world, input, interaction, ui, picker, chunks, sky, renderer, held, drops, mode: () => mode, inventory: () => inventory, invScreen: () => invScreen, health: () => health };
