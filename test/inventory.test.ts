@@ -28,6 +28,23 @@ describe('Inventory', () => {
     expect(inv.slots[0]).toEqual({ item: dirt, count: 15 });
     expect(inv.slots[2]).toBeNull();
   });
+  it('tops up a later partial stack before opening an earlier empty slot', () => {
+    const inv = new Inventory();
+    inv.slots[5] = { item: dirt, count: 60 };
+    expect(inv.add(dirt, 10)).toBe(0);
+    expect(inv.slots[5]).toEqual({ item: dirt, count: 64 });
+    expect(inv.slots[0]).toEqual({ item: dirt, count: 6 });
+    expect(inv.slots[1]).toBeNull();
+  });
+  it('merges across multiple partial stacks in index order', () => {
+    const inv = new Inventory();
+    inv.slots[2] = { item: dirt, count: 63 };
+    inv.slots[7] = { item: dirt, count: 62 };
+    inv.add(dirt, 4);
+    expect(inv.slots[2]).toEqual({ item: dirt, count: 64 });
+    expect(inv.slots[7]).toEqual({ item: dirt, count: 64 });
+    expect(inv.slots[0]).toEqual({ item: dirt, count: 1 });
+  });
   it('splits past 64 into a new stack', () => {
     const inv = new Inventory();
     inv.add(dirt, 100);
