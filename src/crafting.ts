@@ -83,7 +83,7 @@ function patternBox(r: Recipe, mirrored: boolean): (string | null)[][] {
 }
 
 function boxesEqual(a: (string | null)[][], b: (string | null)[][]): boolean {
-  if (a.length !== b.length || a[0].length !== b[0].length) return false;
+  if (a.length !== b.length || a.length === 0 || a[0].length !== b[0].length) return false;
   for (let y = 0; y < a.length; y++)
     for (let x = 0; x < a[0].length; x++) if (a[y][x] !== b[y][x]) return false;
   return true;

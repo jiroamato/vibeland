@@ -67,7 +67,8 @@ export const Tiles = {
   iron_ore: 13,
   bedrock: 14,
   crafting_table_top: 15,
-  crafting_table_side: 16,
+  // one tile for all four sides; named after the vanilla pack file it loads
+  crafting_table_front: 16,
 } as const;
 
 export const TILE_COUNT = 17;
@@ -174,7 +175,7 @@ def({ id: Blocks.WATER, name: 'water', faces: allFaces(T.water), opaque: false, 
 def({ id: Blocks.COAL_ORE, name: 'coal_ore', faces: allFaces(T.coal_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 0, liquid: false, drop: { kind: 'material', material: Material.Coal } });
 def({ id: Blocks.IRON_ORE, name: 'iron_ore', faces: allFaces(T.iron_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 1, liquid: false, drop: { kind: 'material', material: Material.RawIron } });
 def({ id: Blocks.BEDROCK, name: 'bedrock', faces: allFaces(T.bedrock), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: Infinity, tool: null, requiresTool: false, tierNeeded: 0, liquid: false, drop: null });
-def({ id: Blocks.CRAFTING_TABLE, name: 'crafting_table', faces: [T.crafting_table_side, T.crafting_table_side, T.crafting_table_top, T.oak_planks, T.crafting_table_side, T.crafting_table_side], opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.5, tool: A, requiresTool: false, tierNeeded: 0, liquid: false, drop: SELF });
+def({ id: Blocks.CRAFTING_TABLE, name: 'crafting_table', faces: [T.crafting_table_front, T.crafting_table_front, T.crafting_table_top, T.oak_planks, T.crafting_table_front, T.crafting_table_front], opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.5, tool: A, requiresTool: false, tierNeeded: 0, liquid: false, drop: SELF });
 
 export function blockDef(id: BlockId): BlockDef {
   return BLOCKS[id] ?? BLOCKS[0];
