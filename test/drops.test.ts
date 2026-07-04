@@ -72,6 +72,8 @@ describe('dropFor matrix', () => {
     ['iron ore / diamond pick', Blocks.IRON_ORE, diamondPick, material(Material.RawIron)],
     ['bedrock / hand', Blocks.BEDROCK, null, null],
     ['bedrock / diamond pick', Blocks.BEDROCK, diamondPick, null],
+    ['crafting table / hand', Blocks.CRAFTING_TABLE, null, block(Blocks.CRAFTING_TABLE)],
+    ['crafting table / axe', Blocks.CRAFTING_TABLE, woodAxe, block(Blocks.CRAFTING_TABLE)],
   ];
   it.each(cases)('%s', (_name, id, held, expected) => {
     expect(dropFor(d(id), held)).toEqual(expected);

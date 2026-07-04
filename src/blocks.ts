@@ -18,6 +18,7 @@ export const Blocks = {
   COAL_ORE: 11,
   IRON_ORE: 12,
   BEDROCK: 13,
+  CRAFTING_TABLE: 14,
 } as const;
 
 export type BlockId = number;
@@ -65,9 +66,11 @@ export const Tiles = {
   coal_ore: 12,
   iron_ore: 13,
   bedrock: 14,
+  crafting_table_top: 15,
+  crafting_table_side: 16,
 } as const;
 
-export const TILE_COUNT = 15;
+export const TILE_COUNT = 17;
 
 // Map an atlas tile index back to the resource-pack texture name it loads from
 // (assets/minecraft/textures/block/<name>.png). Index == Tiles value.
@@ -87,6 +90,8 @@ export const TILE_NAMES: string[] = [
   'coal_ore',
   'iron_ore',
   'bedrock',
+  'crafting_table_top',
+  'crafting_table_front',
 ];
 
 /** What a block yields when broken with a satisfying tool (see items.dropFor). */
@@ -169,6 +174,7 @@ def({ id: Blocks.WATER, name: 'water', faces: allFaces(T.water), opaque: false, 
 def({ id: Blocks.COAL_ORE, name: 'coal_ore', faces: allFaces(T.coal_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 0, liquid: false, drop: { kind: 'material', material: Material.Coal } });
 def({ id: Blocks.IRON_ORE, name: 'iron_ore', faces: allFaces(T.iron_ore), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 3.0, tool: P, requiresTool: true, tierNeeded: 1, liquid: false, drop: { kind: 'material', material: Material.RawIron } });
 def({ id: Blocks.BEDROCK, name: 'bedrock', faces: allFaces(T.bedrock), opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: Infinity, tool: null, requiresTool: false, tierNeeded: 0, liquid: false, drop: null });
+def({ id: Blocks.CRAFTING_TABLE, name: 'crafting_table', faces: [T.crafting_table_side, T.crafting_table_side, T.crafting_table_top, T.oak_planks, T.crafting_table_side, T.crafting_table_side], opaque: true, solid: true, layer: RenderLayer.Opaque, selfCull: false, hardness: 2.5, tool: A, requiresTool: false, tierNeeded: 0, liquid: false, drop: SELF });
 
 export function blockDef(id: BlockId): BlockDef {
   return BLOCKS[id] ?? BLOCKS[0];

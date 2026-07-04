@@ -288,6 +288,37 @@ function genOre(seed: number, blobColor: RGBA): Tile {
   return t;
 }
 
+function genCraftingTableTop(seed: number): Tile {
+  const t = genPlanks(seed);
+  const dark: RGBA = [96, 72, 40, 255];
+  // work-surface border frame, two pixels in from the edge
+  for (let i = 2; i <= 13; i++) {
+    t.set(i, 2, dark);
+    t.set(i, 13, dark);
+    t.set(2, i, dark);
+    t.set(13, i, dark);
+  }
+  // centre grid cross suggesting the 3x3 layout
+  for (let i = 3; i <= 12; i++) {
+    t.set(i, 7, shade(dark, 12));
+    t.set(7, i, shade(dark, 12));
+  }
+  return t;
+}
+
+function genCraftingTableSide(seed: number): Tile {
+  const t = genPlanks(seed);
+  const dark: RGBA = [82, 60, 34, 255];
+  const steel: RGBA = [188, 188, 196, 255];
+  // saw silhouette: dark blade with a bright top edge
+  for (let x = 2; x <= 6; x++) for (let y = 5; y <= 9; y++) t.set(x, y, dark);
+  for (let x = 2; x <= 6; x++) t.set(x, 5, steel);
+  // hammer head to the right
+  for (let x = 9; x <= 13; x++) for (let y = 6; y <= 8; y++) t.set(x, y, dark);
+  for (let y = 9; y <= 12; y++) t.set(11, y, shade(dark, -18));
+  return t;
+}
+
 function genBedrock(seed: number): Tile {
   const t = new Tile();
   const r = rng(seed);
@@ -321,6 +352,8 @@ export function generateDefaultTiles(): HTMLCanvasElement[] {
   tiles[12] = genOre(444, [38, 38, 40, 255]); // coal
   tiles[13] = genOre(555, [216, 175, 147, 255]); // iron
   tiles[14] = genBedrock(666);
+  tiles[15] = genCraftingTableTop(777);
+  tiles[16] = genCraftingTableSide(888);
   return tiles.map((t) => t.toCanvas());
 }
 

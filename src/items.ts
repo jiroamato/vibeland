@@ -8,7 +8,7 @@
 // material tables are item concerns and live here.
 // ---------------------------------------------------------------------------
 
-import { BlockId, BlockDef, HOTBAR_BLOCKS, ToolType, Material } from './blocks';
+import { BlockId, BlockDef, Blocks, HOTBAR_BLOCKS, ToolType, Material } from './blocks';
 
 export const enum Tier {
   Wood = 0,
@@ -146,6 +146,7 @@ export function defaultHotbar(): Item[] {
 /** Full catalogue shown in the creative picker: every block + every tool. */
 export function allItems(): Item[] {
   const items: Item[] = HOTBAR_BLOCKS.map(block);
+  items.push(block(Blocks.CRAFTING_TABLE)); // placeable but not on the default hotbar
   for (const t of TOOL_TYPES) for (const tier of TIERS) items.push(tool(t, tier));
   return items;
 }
