@@ -314,14 +314,20 @@ function frame(now: number) {
   }
 
   let swung = false;
+  // Dead players are frozen and cannot pick up their scattered drops — the
+  // loop can still run for a frame or two before the pointer-lock exit lands,
+  // so drop physics continue but pickup is gated on being alive.
+  const alive = !health || !health.dead;
   if (started && input.locked) {
-    player.update(dt, input);
-    const survival = inventory
-      ? { drops, inventory, selectedSlot: ui.selected, onChange: syncHotbar, onUseBlock: useBlock }
-      : null;
-    swung = interaction.update(dt, input, player, world, ui.selectedItem, survival);
-    drops.update(dt, player.pos, inventory, syncHotbar);
-    if (health && !health.dead) {
+    if (alive) {
+      player.update(dt, input);
+      const survival = inventory
+        ? { drops, inventory, selectedSlot: ui.selected, onChange: syncHotbar, onUseBlock: useBlock }
+        : null;
+      swung = interaction.update(dt, input, player, world, ui.selectedItem, survival);
+    }
+    drops.update(dt, player.pos, alive ? inventory : null, syncHotbar);
+    if (health && alive) {
       const dmg = fallDamage(player.landedFall);
       if (dmg > 0) {
         health.damage(dmg);
