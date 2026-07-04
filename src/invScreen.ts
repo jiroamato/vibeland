@@ -67,4 +67,17 @@ export class InvCursor {
     this.inv.slots[slot] = this.cursor;
     this.cursor = s;
   }
+
+  /**
+   * Return the cursor stack to the inventory (merge-before-empty, hotbar
+   * first — Inventory.add's rules). Returns the overflow that did not fit,
+   * or null; the caller spawns it as a world drop. Cursor ends empty.
+   */
+  close(): ItemStack | null {
+    if (!this.cursor) return null;
+    const left = this.inv.add(this.cursor.item, this.cursor.count);
+    const overflow = left > 0 ? { item: this.cursor.item, count: left } : null;
+    this.cursor = null;
+    return overflow;
+  }
 }

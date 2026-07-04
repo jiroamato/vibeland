@@ -113,3 +113,27 @@ describe('InvCursor.rightClick', () => {
     expect(cur.cursor).toEqual({ item: sand, count: 2 });
   });
 });
+
+describe('InvCursor.close', () => {
+  it('returns null and flushes the cursor back into the inventory', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 10 };
+    cur.leftClick(0);
+    expect(cur.close()).toBeNull();
+    expect(cur.cursor).toBeNull();
+    expect(inv.slots[0]).toEqual({ item: dirt, count: 10 });
+  });
+  it('returns the overflow when the inventory cannot absorb the cursor', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 64 };
+    cur.leftClick(0); // cursor: 64 dirt
+    for (let i = 0; i < 36; i++) inv.slots[i] = { item: sand, count: 64 }; // now full
+    const overflow = cur.close();
+    expect(overflow).toEqual({ item: dirt, count: 64 });
+    expect(cur.cursor).toBeNull();
+  });
+  it('close with an empty cursor is a no-op returning null', () => {
+    const { cur } = mk();
+    expect(cur.close()).toBeNull();
+  });
+});
