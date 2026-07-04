@@ -49,6 +49,15 @@ describe('InvCursor.leftClick', () => {
     expect(inv.slots[1]).toEqual({ item: dirt, count: 64 });
     expect(cur.cursor).toEqual({ item: dirt, count: 26 });
   });
+  it('left-click on a full same-item slot swaps the stacks (vanilla)', () => {
+    const { inv, cur } = mk();
+    inv.slots[0] = { item: dirt, count: 30 };
+    inv.slots[1] = { item: dirt, count: 64 };
+    cur.leftClick(0); // cursor: 30 dirt
+    cur.leftClick(1); // slot full → swap, not silent no-op
+    expect(inv.slots[1]).toEqual({ item: dirt, count: 30 });
+    expect(cur.cursor).toEqual({ item: dirt, count: 64 });
+  });
   it('swaps different items between cursor and slot', () => {
     const { inv, cur } = mk();
     inv.slots[0] = { item: dirt, count: 7 };
@@ -58,12 +67,12 @@ describe('InvCursor.leftClick', () => {
     expect(inv.slots[1]).toEqual({ item: dirt, count: 7 });
     expect(cur.cursor).toEqual({ item: sand, count: 3 });
   });
-  it('tools (maxStack 1) never merge — the cursor tool stays held', () => {
+  it('tools (maxStack 1) never merge — clicking swaps identical tools', () => {
     const { inv, cur } = mk();
     inv.slots[0] = { item: pick, count: 1 };
     inv.slots[1] = { item: pick, count: 1 };
     cur.leftClick(0); // cursor: pick
-    cur.leftClick(1); // same itemKey but limit 1 → merge transfers 0; stays on cursor
+    cur.leftClick(1); // limit 1 → merge takes 0 → full-slot swap; still one each
     expect(inv.slots[1]).toEqual({ item: pick, count: 1 });
     expect(cur.cursor).toEqual({ item: pick, count: 1 });
   });

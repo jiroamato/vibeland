@@ -31,6 +31,13 @@ export class InvCursor {
     }
     if (itemKey(s.item) === itemKey(this.cursor.item)) {
       const take = Math.min(maxStack(s.item) - s.count, this.cursor.count);
+      if (take === 0) {
+        // slot already at capacity: vanilla falls back to a swap so a full
+        // stack is still retrievable while holding the same item
+        this.inv.slots[slot] = this.cursor;
+        this.cursor = s;
+        return;
+      }
       s.count += take;
       this.cursor.count -= take;
       if (this.cursor.count === 0) this.cursor = null;
@@ -112,12 +119,14 @@ export class InvScreen {
         cell.className = 'slot';
         cell.addEventListener('mousedown', (e) => {
           if (!this.open) return;
-          e.preventDefault();
           if (e.button === 0) this.logic.leftClick(idx);
           else if (e.button === 2) this.logic.rightClick(idx);
-          else return;
+          else return; // middle/aux buttons keep their browser defaults
+          e.preventDefault();
           this.renderSlot(idx);
-          this.renderCursor();
+          // snap the icon to the click point so a fresh pickup never flashes
+          // at a stale position before the first mousemove
+          this.renderCursor(e.clientX, e.clientY);
           this.onChange?.();
         });
         parent.appendChild(cell);
@@ -162,11 +171,15 @@ export class InvScreen {
   }
 
   /** Repaint the mouse-riding stack (hidden when the hand is empty). */
-  private renderCursor(): void {
+  private renderCursor(x?: number, y?: number): void {
     const stack = this.logic.cursor;
     this.cursorEl.classList.toggle('hidden', !stack);
     this.cursorEl.innerHTML = '';
     if (!stack) return;
+    if (x !== undefined && y !== undefined) {
+      this.cursorEl.style.left = x + 'px';
+      this.cursorEl.style.top = y + 'px';
+    }
     this.cursorEl.appendChild(makeItemIcon(stack.item, this.tiles, 64));
     if (stack.count > 1) {
       const badge = document.createElement('span');
